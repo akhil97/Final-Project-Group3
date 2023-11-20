@@ -22,29 +22,21 @@ def main():
     st.subheader("Step 2: Choose a model from the left sidebar")
     model_name = utils.sidebar()
 
-    if model_name:
-        st.write(f"Selected model: {model_name}")
-
-    # Perform classification based on the selected model
     if model_name == "Sentiment Analysis":
         sentiment_score = utils.analyze_sentiment(df_file)
-
         st.write(f"Sentiment Score: {sentiment_score}")
 
+    elif model_name == "BERT":
+        sentiment_score_bert = utils.analyze_sentiment_bert(cleaned_text)
+        st.write(f"Predicted Sentiment for BERT: {sentiment_score_bert}")
 
+    elif model_name == "RoBERTa":
+        sentiment_score_roberta = utils.analyze_sentiment_roberta(cleaned_text)
+        st.write(f"Sentiment Score (RoBERTa): {sentiment_score_roberta}")
 
+    elif model_name == "Hugging Face Transformers":
+        sentiment_score_transformers = utils.analyze_sentiment_transformers(cleaned_text)
+        st.write(f"Sentiment Score (Hugging Face Transformers): {sentiment_score_transformers}")
 
-    elif model_name == "LDA Model":
-
-        topic_words = utils.perform_lda(df_file)
-
-        st.subheader("LDA Model Result:")
-
-        for topic_id, top_words in topic_words:
-            st.write(f"Topic {topic_id + 1}: {', '.join(top_words)}")
-
-        # Display bar chart for topic distribution
-
-        st.bar_chart({f"Topic {topic_id + 1}": len(top_words) for topic_id, top_words in topic_words})
 if __name__ == "__main__":
     main()

@@ -1,12 +1,11 @@
 import re
 import streamlit as st
+import spacy
+import torch
 import pandas as pd
-
-
 from vaderSentiment.vaderSentiment import SentimentIntensityAnalyzer
-from gensim import corpora
-from gensim.models import LdaModel
-from gensim.parsing.preprocessing import preprocess_string
+from vaderSentiment.vaderSentiment import SentimentIntensityAnalyzer
+from transformers import pipeline, BertTokenizer, BertForSequenceClassification, RobertaTokenizer, RobertaForSequenceClassification
 import nltk
 import seaborn as sns
 import matplotlib.pyplot as plt
@@ -18,7 +17,10 @@ def remove_urls(text):
     # Use the sub method to replace all matches with an empty string
     cleaned_text = re.sub(url_pattern, '', text)
 
-    return cleaned_text
+    # Additional preprocessing steps
+    processed_text = cleaned_text.lower()  # Convert to lowercase, for example
+
+    return processed_text
 def upload_file(file_name):
     # File uploader (for Streamlit)
     file = st.file_uploader(f"Choose the {file_name}", type=["txt"])
@@ -41,8 +43,8 @@ def sidebar():
     with st.sidebar:
         genre = st.radio(
             "Choose your model",
-            ["Sentiment Analysis","LDA Model"],
-            captions=["Sentiment Analysis", "LDA"],
+            ["Sentiment Analysis","BERT","RoBERTa","Hugging Face Transformers"],
+            captions=["Sentiment Analysis", "BERT","RoBERTa","Hugging Face Transformers"],
             index=None,
         )
         return genre
@@ -60,18 +62,46 @@ def analyze_sentiment(text):
 
     return sentiment_score
 
-def perform_lda(text):
-    processed_text = preprocess_string(text)
-    dictionary = corpora.Dictionary([processed_text])
-    corpus = [dictionary.doc2bow(processed_text)]
 
-    # Train the LDA model
-    lda_model = LdaModel(corpus, num_topics=2, id2word=dictionary)
+def analyze_sentiment_bert(text):
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    model = BertForSequenceClassification.from_pretrained("bert-base-uncased").to(device)
+    tokenizer = BertTokenizer.from_pretrained("bert-base-uncased")
 
-    # Get the words for each topic
-    topic_words = []
-    for topic_id in range(lda_model.num_topics):
-        words = [word for word, _ in lda_model.show_topic(topic_id)]
-        topic_words.append((topic_id, words))
+    inputs = tokenizer(text, return_tensors="pt", truncation=True, padding=True, max_length=128).to(device)
+    outputs = model(**inputs)
+    logits = outputs.logits
+    # Get predicted sentiment class (positive, neutral, negative)
+    predicted_class = torch.argmax(logits, dim=1).item()
 
-    return topic_words
+    # Map predicted class to sentiment label
+    sentiment_classes = ['negative', 'positive']
+    predicted_sentiment = sentiment_classes[predicted_class]
+
+    return predicted_sentiment
+
+def analyze_sentiment_roberta(text):
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    model = RobertaForSequenceClassification.from_pretrained("roberta-base").to(device)
+    tokenizer = RobertaTokenizer.from_pretrained("roberta-base")
+
+    inputs = tokenizer(text, return_tensors="pt", truncation=True, padding=True, max_length=128).to(device)
+    outputs = model(**inputs)
+    logits = outputs.logits
+    probabilities = logits.softmax(dim=1)
+
+    sentiment_score = probabilities[0, 1].item() * 100
+    return sentiment_score
+def analyze_sentiment_transformers(text, model_name="bert-base-uncased"):
+    sentiment_analyzer = pipeline('sentiment-analysis', model=model_name)
+    max_length = 512
+    chunks = [text[i:i + max_length] for i in range(0, len(text), max_length)]
+    sentiment_scores = []
+
+    for chunk in chunks:
+        result = sentiment_analyzer(chunk)
+        sentiment_scores.append(result[0]['score'])
+
+    aggregated_sentiment_score = sum(sentiment_scores) / len(sentiment_scores)
+    return aggregated_sentiment_score
+
