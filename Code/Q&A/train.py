@@ -1,10 +1,18 @@
-import torch
-import trasformer
+from chatterbot import ChatBot
+from chatterbot.trainers import ListTrainer
 
+# Create a new chat bot named Charlie
+chatbot = ChatBot('Charlie')
 
-from datasets import load_dataset
-raw_datasets = load_dataset("glue", "mrpc")
+trainer = ListTrainer(chatbot)
 
-model = AutoModelForSequenceClassification.from_pretrained("path/to/locally/downloaded/model/files")
+trainer.train([
+    "Hi, can I help you?",
+    "Sure, I'd like to book a flight to Iceland.",
+    "Your flight has been booked."
+])
 
-raw_datasets = load_dataset("path/to/locally/downloaded/dataset/files")
+# Get a response to the input text 'I would like to book a flight.'
+response = chatbot.get_response('I would like to book a flight.')
+
+print(response)
