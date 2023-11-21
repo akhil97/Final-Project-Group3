@@ -8,6 +8,8 @@ from vaderSentiment.vaderSentiment import SentimentIntensityAnalyzer
 from vaderSentiment.vaderSentiment import SentimentIntensityAnalyzer
 from transformers import pipeline, BertTokenizer, BertForSequenceClassification, RobertaTokenizer, RobertaForSequenceClassification
 import nltk
+from nltk.corpus import stopwords
+from nltk.tokenize import word_tokenize
 import seaborn as sns
 import matplotlib.pyplot as plt
 from io import StringIO
@@ -18,8 +20,17 @@ def remove_urls(text):
     # Use the sub method to replace all matches with an empty string
     cleaned_text = re.sub(url_pattern, '', text)
 
-    # Additional preprocessing steps
-    processed_text = cleaned_text.lower()  # Convert to lowercase, for example
+    # Tokenize the cleaned text
+    words = word_tokenize(cleaned_text)
+
+    # Get a list of English stop words
+    stop_words = set(stopwords.words('english'))
+
+    # Remove stop words
+    filtered_words = [word.lower() for word in words if word.lower() not in stop_words]
+
+    # Join the filtered words back into a string
+    processed_text = ' '.join(filtered_words)
 
     return processed_text
 def upload_file(file_name):
@@ -44,33 +55,33 @@ def sidebar():
     with st.sidebar:
         genre = st.radio(
             "Choose your model",
-            ["Sentiment Analysis","BERT","RoBERTa","Hugging Face Transformers"],
-            captions=["Sentiment Analysis", "BERT","RoBERTa","Hugging Face Transformers"],
+            ["BERT","RoBERTa","Hugging Face Transformers"],
+            captions=["BERT","RoBERTa","Hugging Face Transformers"],
             index=None,
         )
         return genre
 
 
-def analyze_sentiment(text):
-    analyzer = SentimentIntensityAnalyzer()
-    sentiment_score = analyzer.polarity_scores(text)['compound']
-
-
-
-    # Classify sentiment as positive, negative, or neutral
-    sentiment_label = "Positive" if sentiment_score >= 0.05 else "Negative" if sentiment_score <= -0.05 else "Neutral"
-    st.write(f"Sentiment: {sentiment_label}")
-
-    return sentiment_score
-
 
 def analyze_sentiment_bert(text):
+    # Check if GPU is available
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+
+    # Load legal BERT tokenizer and model
     tokenizer = AutoTokenizer.from_pretrained("nlpaueb/legal-bert-base-uncased")
     model = AutoModelForSequenceClassification.from_pretrained("nlpaueb/legal-bert-base-uncased")
 
-    inputs = tokenizer(text, return_tensors="pt", truncation=True, padding=True, max_length=128).to(device)
-    outputs = model(**inputs)
+    # Tokenize input text
+    inputs = tokenizer(text, return_tensors="pt", truncation=True, padding=True, max_length=512)
+
+    # Move model and inputs to GPU if available
+    model.to(device)
+    inputs = {key: value.to(device) for key, value in inputs.items()}
+
+    # Forward pass through the model
+    with torch.no_grad():
+
+        outputs = model(**inputs)
 
     # Get the logits from the output dictionary
     logits = outputs.logits
@@ -84,13 +95,21 @@ def analyze_sentiment_bert(text):
 
     return predicted_sentiment
 
-def analyze_sentiment_roberta(text):
+def analyze_sentiment_roberta(text, threshold=0.5):
+    # Check if GPU is available
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+
+    # Load RoBERTa tokenizer and model
     tokenizer = AutoTokenizer.from_pretrained("saibo/legal-roberta-base")
     model = AutoModelForSequenceClassification.from_pretrained("saibo/legal-roberta-base")
 
-    inputs = tokenizer(text, return_tensors="pt", truncation=True, padding=True, max_length=128).to(device)
-    outputs = model(**inputs)
+    # Move model and inputs to GPU if available
+    model.to(device)
+    inputs = tokenizer(text, return_tensors="pt", truncation=True, padding=True, max_length=512).to(device)
+
+    # Perform inference on the GPU
+    with torch.no_grad():
+        outputs = model(**inputs)
 
     # Get the logits from the output dictionary
     logits = outputs.logits
@@ -101,24 +120,38 @@ def analyze_sentiment_roberta(text):
     # Get the predicted class (0 for negative, 1 for positive)
     predicted_class = torch.argmax(probabilities, dim=1).item()
 
-    # Map predicted class to sentiment label
-    sentiment_label = 'Positive' if predicted_class == 1 else 'Negative'
+    # Map predicted class to sentiment label based on a threshold
+    sentiment_label = 'Positive' if probabilities[0, 1].item() >= threshold else 'Negative'
 
     return sentiment_label
-def analyze_sentiment_transformers(text, model_name="bert-base-uncased", threshold=1):
-    sentiment_analyzer = pipeline('sentiment-analysis', model=model_name)
-    max_length = 512
-    chunks = [text[i:i + max_length] for i in range(0, len(text), max_length)]
-    sentiment_scores = []
 
-    for chunk in chunks:
-        result = sentiment_analyzer(chunk)
-        sentiment_scores.append(result[0]['score'])
 
-    aggregated_sentiment_score = sum(sentiment_scores) / len(sentiment_scores)
+def analyze_sentiment_transformers(text, model_name="nlptown/bert-base-multilingual-uncased-sentiment", threshold=0.5):
+    # Check if GPU is available
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+
+    # Load pre-trained model and tokenizer
+    model = AutoModelForSequenceClassification.from_pretrained(model_name)
+    tokenizer = AutoTokenizer.from_pretrained(model_name)
+
+    # Tokenize and pad the input text
+    inputs = tokenizer(text, return_tensors="pt", truncation=True, padding=True, max_length=512)
+    inputs.to(device)
+
+    # Forward pass to get sentiment logits
+    with torch.no_grad():
+        logits = model(**inputs).logits
+
+    # Calculate softmax to get probabilities
+    probabilities = torch.nn.functional.softmax(logits, dim=1)
+
+    # Extract the probability of the positive class
+    positive_probability = probabilities[0][1].item()
 
     # Convert sentiment score to a binary label
-    sentiment_label = 'Positive' if aggregated_sentiment_score == threshold else 'Negative'
+    sentiment_label = 'Positive' if positive_probability >= threshold else 'Negative'
 
     return sentiment_label
+
+
 

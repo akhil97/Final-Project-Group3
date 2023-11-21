@@ -16,17 +16,13 @@ def main():
         cleaned_text = utils.remove_urls(df_file)
 
         # Display the processed text
-        words = cleaned_text.split()[:300]
+        words = df_file.split()[:300]
         st.write("Sample Case Text:")
         st.write(' '.join(words))
     st.subheader("Step 2: Choose a model from the left sidebar")
     model_name = utils.sidebar()
 
-    if model_name == "Sentiment Analysis":
-        sentiment_score = utils.analyze_sentiment(df_file)
-        st.write(f"Sentiment Score: {sentiment_score}")
-
-    elif model_name == "BERT":
+    if model_name == "BERT":
         sentiment_score_bert = utils.analyze_sentiment_bert(cleaned_text)
         st.write(f"Predicted Sentiment for BERT: {sentiment_score_bert}")
 
