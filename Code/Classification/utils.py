@@ -1,4 +1,6 @@
 import re
+
+
 import streamlit as st
 import spacy
 import torch
@@ -16,9 +18,12 @@ from io import StringIO
 def remove_urls(text):
     # Define a regular expression pattern for matching URLs
     url_pattern = re.compile(r'https?://\S+|www\.\S+')
-
+    words_to_remove = ['Indian Kanoon']
+    combined_pattern = re.compile('|'.join([url_pattern.pattern] + [re.escape(word) for word in words_to_remove]),
+                                  flags=re.IGNORECASE)
     # Use the sub method to replace all matches with an empty string
-    cleaned_text = re.sub(url_pattern, '', text)
+    cleaned_text = re.sub(combined_pattern, '', text)
+    cleaned_text = re.sub(r'\d+', '', cleaned_text)
 
     # Tokenize the cleaned text
     words = word_tokenize(cleaned_text)
@@ -63,42 +68,47 @@ def sidebar():
 
 
 
-def analyze_sentiment_bert(text):
+def analyze_sentiment_bert(text, threshold=0.5,seed=None):
     # Check if GPU is available
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    if seed is not None:
+        # Set a random seed for reproducibility
+        torch.manual_seed(seed)
+    model_name = "nlpaueb/legal-bert-base-uncased"
+    model = AutoModelForSequenceClassification.from_pretrained(model_name)
+    tokenizer = AutoTokenizer.from_pretrained(model_name)
 
-    # Load legal BERT tokenizer and model
-    tokenizer = AutoTokenizer.from_pretrained("nlpaueb/legal-bert-base-uncased")
-    model = AutoModelForSequenceClassification.from_pretrained("nlpaueb/legal-bert-base-uncased")
-
-    # Tokenize input text
-    inputs = tokenizer(text, return_tensors="pt", truncation=True, padding=True, max_length=512)
-
-    # Move model and inputs to GPU if available
+    # Move model to GPU
     model.to(device)
+
+    # Tokenize and pad the input text
+    inputs = tokenizer(text, return_tensors="pt", truncation=True, padding=True)
+
+    # Move inputs to GPU
     inputs = {key: value.to(device) for key, value in inputs.items()}
 
-    # Forward pass through the model
+    # Forward pass to get sentiment logits
     with torch.no_grad():
+        logits = model(**inputs).logits
 
-        outputs = model(**inputs)
+    # Calculate softmax to get probabilities
+    probabilities = torch.nn.functional.softmax(logits, dim=1)
 
-    # Get the logits from the output dictionary
-    logits = outputs.logits
+    # Extract the probability of the positive class
+    confidence_percentage = probabilities.mean().item() * 100
 
-    # Get predicted sentiment class (positive, neutral, negative)
-    predicted_class = torch.argmax(logits, dim=1).item()
+    # Convert sentiment score to a binary label
+    sentiment_label = 'Positive' if confidence_percentage >= threshold else 'Negative'
 
-    # Map predicted class to sentiment label
-    sentiment_classes = ['Negative', 'Positive']
-    predicted_sentiment = sentiment_classes[predicted_class]
+    return sentiment_label, confidence_percentage
 
-    return predicted_sentiment
 
-def analyze_sentiment_roberta(text, threshold=0.5):
+def analyze_sentiment_roberta(text, threshold=0.5,seed=None):
     # Check if GPU is available
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-
+    if seed is not None:
+        # Set a random seed for reproducibility
+        torch.manual_seed(seed)
     # Load RoBERTa tokenizer and model
     tokenizer = AutoTokenizer.from_pretrained("saibo/legal-roberta-base")
     model = AutoModelForSequenceClassification.from_pretrained("saibo/legal-roberta-base")
@@ -123,35 +133,33 @@ def analyze_sentiment_roberta(text, threshold=0.5):
     # Map predicted class to sentiment label based on a threshold
     sentiment_label = 'Positive' if probabilities[0, 1].item() >= threshold else 'Negative'
 
-    return sentiment_label
+    # Get the confidence percentage for the predicted class
+    confidence_percentage = probabilities[0, predicted_class].item() * 100
+
+    return sentiment_label, confidence_percentage
 
 
-def analyze_sentiment_transformers(text, model_name="nlptown/bert-base-multilingual-uncased-sentiment", threshold=0.5):
-    # Check if GPU is available
-    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
-    # Load pre-trained model and tokenizer
-    model = AutoModelForSequenceClassification.from_pretrained(model_name)
-    tokenizer = AutoTokenizer.from_pretrained(model_name)
+def analyze_sentiment_transformers(text, model_name="nlpaueb/legal-bert-base-uncased", threshold=0.5,seed=None):
+    if seed is not None:
+        # Set a random seed for reproducibility
+        torch.manual_seed(seed)
+    sentiment_analyzer = pipeline('sentiment-analysis', model=model_name)
+    max_length = 512
+    chunk_size =  max_length
+    chunks = [text[i:i + chunk_size] for i in range(0, len(text), chunk_size)]
+    sentiment_scores = []
 
-    # Tokenize and pad the input text
-    inputs = tokenizer(text, return_tensors="pt", truncation=True, padding=True, max_length=512)
-    inputs.to(device)
+    for chunk in chunks:
+        result = sentiment_analyzer(chunk)
+        sentiment_scores.append(result[0]['score'])
 
-    # Forward pass to get sentiment logits
-    with torch.no_grad():
-        logits = model(**inputs).logits
-
-    # Calculate softmax to get probabilities
-    probabilities = torch.nn.functional.softmax(logits, dim=1)
-
-    # Extract the probability of the positive class
-    positive_probability = probabilities[0][1].item()
+    # Calculate the average sentiment score as a confidence measure
+    aggregated_sentiment_score = sum(sentiment_scores) / len(sentiment_scores) * 100
 
     # Convert sentiment score to a binary label
-    sentiment_label = 'Positive' if positive_probability >= threshold else 'Negative'
+    sentiment_label = 'positive' if aggregated_sentiment_score >= threshold else 'negative'
 
-    return sentiment_label
-
+    return sentiment_label, aggregated_sentiment_score
 
 

@@ -1,6 +1,6 @@
 import streamlit as st
 import utils
-
+import random
 
 from gensim.parsing.preprocessing import preprocess_string
 
@@ -22,17 +22,28 @@ def main():
     st.subheader("Step 2: Choose a model from the left sidebar")
     model_name = utils.sidebar()
 
+    seed = 42  # You can choose any integer as the seed
+    random.seed(seed)
     if model_name == "BERT":
-        sentiment_score_bert = utils.analyze_sentiment_bert(cleaned_text)
-        st.write(f"Predicted Sentiment for BERT: {sentiment_score_bert}")
+        sentiment_label, confidence_percentage =  utils.analyze_sentiment_bert(cleaned_text,seed=seed)
+        st.write(f"BERT Sentiment Label: {sentiment_label}")
+        st.write(f"Confidence Percentage: {confidence_percentage:.2f}%")
 
     elif model_name == "RoBERTa":
-        sentiment_score_roberta = utils.analyze_sentiment_roberta(cleaned_text)
-        st.write(f"Sentiment Score (RoBERTa): {sentiment_score_roberta}")
+        sentiment_label, confidence_percentage = utils.analyze_sentiment_roberta(cleaned_text,seed=seed)
+        st.write(f"RoBERTa Sentiment Label: {sentiment_label}")
+        st.write(f"Confidence Percentage: {confidence_percentage:.2f}%")
 
     elif model_name == "Hugging Face Transformers":
-        sentiment_score_transformers = utils.analyze_sentiment_transformers(cleaned_text)
-        st.write(f"Sentiment Score (Hugging Face Transformers): {sentiment_score_transformers}")
+        sentiment_label, confidence_percentage = utils.analyze_sentiment_transformers(cleaned_text,seed=seed)
+        st.write(f"Transformers Sentiment Label: {sentiment_label}")
+        st.write(f"Confidence Percentage: {confidence_percentage:.2f}%")
+
+    elif model_name == "sentiment":
+        sentiment_label, confidence_percentage = utils.predict_labels_legal_document(cleaned_text)
+        st.write(f"Sentiment Label: {sentiment_label}")
+        st.write(f"Confidence Percentage: {confidence_percentage:.2f}%")
+
 
 if __name__ == "__main__":
     main()
