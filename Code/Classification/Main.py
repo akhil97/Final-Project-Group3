@@ -1,6 +1,6 @@
 import streamlit as st
 import utils
-
+import random
 
 from gensim.parsing.preprocessing import preprocess_string
 
@@ -16,35 +16,34 @@ def main():
         cleaned_text = utils.remove_urls(df_file)
 
         # Display the processed text
-        words = cleaned_text.split()[:300]
+        words = df_file.split()[:300]
         st.write("Sample Case Text:")
         st.write(' '.join(words))
     st.subheader("Step 2: Choose a model from the left sidebar")
     model_name = utils.sidebar()
 
-    if model_name:
-        st.write(f"Selected model: {model_name}")
+    seed = 42  # You can choose any integer as the seed
+    random.seed(seed)
+    if model_name == "BERT":
+        sentiment_label, confidence_percentage =  utils.analyze_sentiment_bert(cleaned_text,seed=seed)
+        st.write(f"BERT Sentiment Label: {sentiment_label}")
+        st.write(f"Confidence Percentage: {confidence_percentage:.2f}%")
 
-    # Perform classification based on the selected model
-    if model_name == "Sentiment Analysis":
-        sentiment_score = utils.analyze_sentiment(df_file)
+    elif model_name == "RoBERTa":
+        sentiment_label, confidence_percentage = utils.analyze_sentiment_roberta(cleaned_text,seed=seed)
+        st.write(f"RoBERTa Sentiment Label: {sentiment_label}")
+        st.write(f"Confidence Percentage: {confidence_percentage:.2f}%")
 
-        st.write(f"Sentiment Score: {sentiment_score}")
+    elif model_name == "Hugging Face Transformers":
+        sentiment_label, confidence_percentage = utils.analyze_sentiment_transformers(cleaned_text,seed=seed)
+        st.write(f"Transformers Sentiment Label: {sentiment_label}")
+        st.write(f"Confidence Percentage: {confidence_percentage:.2f}%")
+
+    elif model_name == "sentiment":
+        sentiment_label, confidence_percentage = utils.predict_labels_legal_document(cleaned_text)
+        st.write(f"Sentiment Label: {sentiment_label}")
+        st.write(f"Confidence Percentage: {confidence_percentage:.2f}%")
 
 
-
-
-    elif model_name == "LDA Model":
-
-        topic_words = utils.perform_lda(df_file)
-
-        st.subheader("LDA Model Result:")
-
-        for topic_id, top_words in topic_words:
-            st.write(f"Topic {topic_id + 1}: {', '.join(top_words)}")
-
-        # Display bar chart for topic distribution
-
-        st.bar_chart({f"Topic {topic_id + 1}": len(top_words) for topic_id, top_words in topic_words})
 if __name__ == "__main__":
     main()
