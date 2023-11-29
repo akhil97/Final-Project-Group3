@@ -2,20 +2,14 @@ import re
 
 
 import streamlit as st
-import spacy
-import torch
-import pandas as pd
-from transformers import AutoModelForSequenceClassification, AutoTokenizer,AutoModel
-
-from vaderSentiment.vaderSentiment import SentimentIntensityAnalyzer
-from vaderSentiment.vaderSentiment import SentimentIntensityAnalyzer
-from transformers import pipeline, BertTokenizer, BertForSequenceClassification, RobertaTokenizer, RobertaForSequenceClassification
-import nltk
 from nltk.corpus import stopwords
 from nltk.tokenize import word_tokenize
-import seaborn as sns
+from transformers import BertTokenizer, BertForSequenceClassification
+import torch
 import matplotlib.pyplot as plt
-from io import StringIO
+from sklearn.metrics import confusion_matrix, ConfusionMatrixDisplay
+import numpy as np
+#__________________________________________
 def remove_urls(text):
     # Define a regular expression pattern for matching URLs
     url_pattern = re.compile(r'https?://\S+|www\.\S+')
@@ -53,7 +47,7 @@ def remove_urls(text):
     processed_text = ' '.join(filtered_words)
 
     return processed_text
-
+#___________________________________________________________
 def upload_file(file_name):
     # File uploader (for Streamlit)
     file = st.file_uploader(f"Choose the {file_name}", type=["txt"])
@@ -72,62 +66,24 @@ def upload_file(file_name):
             return None
     else:
         return None
+#______________________________________________________________
 def sidebar():
     with st.sidebar:
         genre = st.radio(
             "Choose your model",
-            ["LegalBERT","RoBERTa","Hugging Face Transformers"],
-
-            index=None,
+            ["InLegalBERT","InCaseLawBERT","CustomInLegalBERT","CustomInLegalRoBERTa"],
+            index=None
         )
         return genre
 
-def load_and_predict_legal_judgment(text, model_name="InLegalBERT"):
-    # Load the specified model and tokenizer
-    model = AutoModelForSequenceClassification.from_pretrained(f"law-ai/{model_name}")
-    tokenizer = AutoTokenizer.from_pretrained(f"law-ai/{model_name}")
-
-    # Tokenize the input text and make predictions
-    inputs = tokenizer(text, return_tensors="pt", truncation=True, padding=True, max_length=512)
-
-    with torch.no_grad():
-        outputs = model(**inputs)
-
+#___________________________________________________________
+def custom_bert_judgment(text):
+    model_path = 'path/to/your/fine_tuned_model'
+    model = BertForSequenceClassification.from_pretrained(model_path)
+    tokenizer = BertTokenizer.from_pretrained(model_path)
+    inputs = tokenizer(text, return_tensors="pt", truncation=True, padding=True)
+    outputs = model(**inputs)
     logits = outputs.logits
-    probabilities = torch.softmax(logits, dim=1)
-
-    predicted_class = torch.argmax(probabilities, dim=1).item()
-
-
-    # Assign labels based on predicted class
-    if predicted_class == 0:
-        prediction_label = "Rejected"
-    else:
-        prediction_label = "Accepted"
-
-    return prediction_label
-
-
-def analyze_sentiment_transformers(text, model_name="nlpaueb/legal-bert-base-uncased", threshold=0.5,seed=None):
-    if seed is not None:
-        # Set a random seed for reproducibility
-        torch.manual_seed(seed)
-    sentiment_analyzer = pipeline('sentiment-analysis', model=model_name)
-    max_length = 512
-    chunk_size =  max_length
-    chunks = [text[i:i + chunk_size] for i in range(0, len(text), chunk_size)]
-    sentiment_scores = []
-
-    for chunk in chunks:
-        result = sentiment_analyzer(chunk)
-        sentiment_scores.append(result[0]['score'])
-
-    # Calculate the average sentiment score as a confidence measure
-    aggregated_sentiment_score = sum(sentiment_scores) / len(sentiment_scores) * 100
-
-    # Convert sentiment score to a binary label
-    sentiment_label = 'positive' if aggregated_sentiment_score >= threshold else 'negative'
-
-    return sentiment_label, aggregated_sentiment_score
-
-
+    probabilities = torch.nn.functional.softmax(logits, dim=1)
+    predicted_class = torch.argmax(probabilities).item()
+    return predicted_class, probabilities[0].tolist()
