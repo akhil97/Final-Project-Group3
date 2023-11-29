@@ -16,18 +16,20 @@ def main():
         cleaned_text = utils.remove_urls(df_file)
 
         # Display the processed text
-        words = df_file.split()[:300]
+        words = cleaned_text.split()[:200]
         st.write("Sample Case Text:")
         st.write(' '.join(words))
     st.subheader("Step 2: Choose a model from the left sidebar")
+
     model_name = utils.sidebar()
 
     seed = 42  # You can choose any integer as the seed
     random.seed(seed)
-    if model_name == "BERT":
-        sentiment_label, confidence_percentage =  utils.analyze_sentiment_bert(cleaned_text,seed=seed)
-        st.write(f"BERT Sentiment Label: {sentiment_label}")
-        st.write(f"Confidence Percentage: {confidence_percentage:.2f}%")
+    if model_name == "InLegalBERT":
+        predicted_label = utils.load_and_predict_legal_judgment(cleaned_text)
+        st.write(f"InLegalBERT Predicted Label: {predicted_label}")
+
+
 
     elif model_name == "RoBERTa":
         sentiment_label, confidence_percentage = utils.analyze_sentiment_roberta(cleaned_text,seed=seed)

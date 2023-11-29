@@ -5,7 +5,8 @@ import streamlit as st
 import spacy
 import torch
 import pandas as pd
-from transformers import AutoModelForSequenceClassification, AutoTokenizer
+from transformers import AutoModelForSequenceClassification, AutoTokenizer,AutoModel
+
 from vaderSentiment.vaderSentiment import SentimentIntensityAnalyzer
 from vaderSentiment.vaderSentiment import SentimentIntensityAnalyzer
 from transformers import pipeline, BertTokenizer, BertForSequenceClassification, RobertaTokenizer, RobertaForSequenceClassification
@@ -23,7 +24,21 @@ def remove_urls(text):
                                   flags=re.IGNORECASE)
     # Use the sub method to replace all matches with an empty string
     cleaned_text = re.sub(combined_pattern, '', text)
-    cleaned_text = re.sub(r'\d+', '', cleaned_text)
+    cleaned_text = re.sub(r'\d+', '',  cleaned_text)
+    cleaned_text = re.sub(r'[^a-zA-Z0-9.,)\-(/?\t ]','', cleaned_text)
+    cleaned_text = re.sub(r'[^a-zA-Z0-9.,)\-(/?\t ]','', cleaned_text) # removing everything other than these a-zA-Z0-9.,)\-(/?\t
+    cleaned_text = re.sub(r'(?<=[^0-9])/(?=[^0-9])', ' ', cleaned_text)
+    cleaned_text = re.sub("\t+", " ", cleaned_text) # converting multiple tabs and spaces ito a single tab or space
+    cleaned_text = re.sub(" +", " ", cleaned_text)
+    cleaned_text = re.sub("\.\.+", "",   cleaned_text)  # these were the commmon noises in out data, depends on data
+    cleaned_text = re.sub("\A ?", "",  cleaned_text)
+
+      # dividing into para wrt to roman points
+    cleaned_text = re.sub(r"[()[\]\"$']", " ", cleaned_text)  # removing ()[\]\"$' these characters
+    cleaned_text = re.sub(r" no.", " number", cleaned_text)  # converting no., nos., co., ltd.  to number, numbers, company and limited
+    cleaned_text = re.sub(r" nos.", " numbers", cleaned_text)
+    cleaned_text = re.sub(r" co.", " company", cleaned_text)
+    cleaned_text = re.sub(r" ltd.", " limited", cleaned_text)
 
     # Tokenize the cleaned text
     words = word_tokenize(cleaned_text)
@@ -38,6 +53,7 @@ def remove_urls(text):
     processed_text = ' '.join(filtered_words)
 
     return processed_text
+
 def upload_file(file_name):
     # File uploader (for Streamlit)
     file = st.file_uploader(f"Choose the {file_name}", type=["txt"])
@@ -60,84 +76,36 @@ def sidebar():
     with st.sidebar:
         genre = st.radio(
             "Choose your model",
-            ["BERT","RoBERTa","Hugging Face Transformers"],
-            captions=["BERT","RoBERTa","Hugging Face Transformers"],
+            ["LegalBERT","RoBERTa","Hugging Face Transformers"],
+
             index=None,
         )
         return genre
 
+def load_and_predict_legal_judgment(text, model_name="InLegalBERT"):
+    # Load the specified model and tokenizer
+    model = AutoModelForSequenceClassification.from_pretrained(f"law-ai/{model_name}")
+    tokenizer = AutoTokenizer.from_pretrained(f"law-ai/{model_name}")
 
+    # Tokenize the input text and make predictions
+    inputs = tokenizer(text, return_tensors="pt", truncation=True, padding=True, max_length=512)
 
-def analyze_sentiment_bert(text, threshold=0.5,seed=None):
-    # Check if GPU is available
-    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-    if seed is not None:
-        # Set a random seed for reproducibility
-        torch.manual_seed(seed)
-    model_name = "nlpaueb/legal-bert-base-uncased"
-    model = AutoModelForSequenceClassification.from_pretrained(model_name)
-    tokenizer = AutoTokenizer.from_pretrained(model_name)
-
-    # Move model to GPU
-    model.to(device)
-
-    # Tokenize and pad the input text
-    inputs = tokenizer(text, return_tensors="pt", truncation=True, padding=True)
-
-    # Move inputs to GPU
-    inputs = {key: value.to(device) for key, value in inputs.items()}
-
-    # Forward pass to get sentiment logits
-    with torch.no_grad():
-        logits = model(**inputs).logits
-
-    # Calculate softmax to get probabilities
-    probabilities = torch.nn.functional.softmax(logits, dim=1)
-
-    # Extract the probability of the positive class
-    confidence_percentage = probabilities.mean().item() * 100
-
-    # Convert sentiment score to a binary label
-    sentiment_label = 'Positive' if confidence_percentage >= threshold else 'Negative'
-
-    return sentiment_label, confidence_percentage
-
-
-def analyze_sentiment_roberta(text, threshold=0.5,seed=None):
-    # Check if GPU is available
-    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-    if seed is not None:
-        # Set a random seed for reproducibility
-        torch.manual_seed(seed)
-    # Load RoBERTa tokenizer and model
-    tokenizer = AutoTokenizer.from_pretrained("saibo/legal-roberta-base")
-    model = AutoModelForSequenceClassification.from_pretrained("saibo/legal-roberta-base")
-
-    # Move model and inputs to GPU if available
-    model.to(device)
-    inputs = tokenizer(text, return_tensors="pt", truncation=True, padding=True, max_length=512).to(device)
-
-    # Perform inference on the GPU
     with torch.no_grad():
         outputs = model(**inputs)
 
-    # Get the logits from the output dictionary
     logits = outputs.logits
-
-    # Apply softmax to get probabilities
     probabilities = torch.softmax(logits, dim=1)
 
-    # Get the predicted class (0 for negative, 1 for positive)
     predicted_class = torch.argmax(probabilities, dim=1).item()
 
-    # Map predicted class to sentiment label based on a threshold
-    sentiment_label = 'Positive' if probabilities[0, 1].item() >= threshold else 'Negative'
 
-    # Get the confidence percentage for the predicted class
-    confidence_percentage = probabilities[0, predicted_class].item() * 100
+    # Assign labels based on predicted class
+    if predicted_class == 0:
+        prediction_label = "Rejected"
+    else:
+        prediction_label = "Accepted"
 
-    return sentiment_label, confidence_percentage
-
+    return prediction_label
 
 
 def analyze_sentiment_transformers(text, model_name="nlpaueb/legal-bert-base-uncased", threshold=0.5,seed=None):
