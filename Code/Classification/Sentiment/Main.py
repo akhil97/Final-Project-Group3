@@ -113,7 +113,7 @@ def main():
             st.pyplot(plt)
 
     elif model_name == "CustomInLegalRoBERTa":
-
+ @
         true_labels = []
         prediction, probabilities = utils.custom_roberta_judgment(cleaned_text)
 
