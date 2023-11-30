@@ -4,7 +4,7 @@ import re
 import streamlit as st
 from nltk.corpus import stopwords
 from nltk.tokenize import word_tokenize
-from transformers import BertTokenizer, BertForSequenceClassification
+from transformers import BertTokenizer, BertForSequenceClassification, AutoTokenizer, AutoModel,AutoModelForSequenceClassification
 import torch
 import matplotlib.pyplot as plt
 from sklearn.metrics import confusion_matrix, ConfusionMatrixDisplay
@@ -71,16 +71,44 @@ def sidebar():
     with st.sidebar:
         genre = st.radio(
             "Choose your model",
-            ["InLegalBERT","InCaseLawBERT","CustomInLegalBERT","CustomInLegalRoBERTa"],
+            ["InLegalBERT","CustomInLegalBERT","CustomInLegalRoBERTa"],
             index=None
         )
         return genre
 
 #___________________________________________________________
+
+def inlegal_bert_judgment(text):
+    model_name = 'law-ai/InLegalBERT'
+    tokenizer = AutoTokenizer.from_pretrained(model_name, use_fast=True)
+    model = AutoModelForSequenceClassification.from_pretrained(model_name)
+    inputs = tokenizer(text, return_tensors="pt", truncation=True, padding=True)
+    outputs = model(**inputs)
+    logits = outputs.logits
+    probabilities = torch.nn.functional.softmax(logits, dim=1)
+    predicted_class = torch.argmax(probabilities).item()
+    return predicted_class, probabilities[0].tolist()
+
 def custom_bert_judgment(text):
+
     model_path = 'path/to/your/fine_tuned_model'
-    model = BertForSequenceClassification.from_pretrained(model_path)
-    tokenizer = BertTokenizer.from_pretrained(model_path)
+    tokenizer_path = 'path/to/your/tokenizer'
+
+    model = AutoModelForSequenceClassification.from_pretrained(model_path)
+    tokenizer = AutoTokenizer.from_pretrained(tokenizer_path)
+    inputs = tokenizer(text, return_tensors="pt", truncation=True, padding=True)
+    outputs = model(**inputs)
+    logits = outputs.logits
+    probabilities = torch.nn.functional.softmax(logits, dim=1)
+    predicted_class = torch.argmax(probabilities).item()
+    return predicted_class, probabilities[0].tolist()
+
+
+def custom_roberta_judgment(text):
+    model_path = 'path/to/your/fine_tuned_model'
+    tokenizer_path = 'path/to/your/tokenizer'
+    model = AutoModelForSequenceClassification.from_pretrained(model_path)
+    tokenizer = AutoTokenizer.from_pretrained(tokenizer_path)
     inputs = tokenizer(text, return_tensors="pt", truncation=True, padding=True)
     outputs = model(**inputs)
     logits = outputs.logits
