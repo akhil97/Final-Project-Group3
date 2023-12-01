@@ -1,14 +1,22 @@
 import re
-
-
 import streamlit as st
+import pandas as pd
 from nltk.corpus import stopwords
 from nltk.tokenize import word_tokenize
 from transformers import BertTokenizer, BertForSequenceClassification, AutoTokenizer, AutoModel,AutoModelForSequenceClassification
 import torch
+
 import matplotlib.pyplot as plt
 from sklearn.metrics import confusion_matrix, ConfusionMatrixDisplay
+from sklearn.metrics import confusion_matrix, ConfusionMatrixDisplay, precision_recall_curve, auc,accuracy_score,classification_report
 import numpy as np
+import progressbar
+import progressbar
+from transformers import BertForSequenceClassification,AutoModelForPreTraining, AdamW, BertConfig
+from transformers import get_linear_schedule_with_warmup
+from torch.utils.data import TensorDataset, DataLoader, RandomSampler
+from keras.preprocessing.sequence import pad_sequences
+from tqdm import tqdm
 #__________________________________________
 def remove_urls(text):
     # Define a regular expression pattern for matching URLs
@@ -18,33 +26,23 @@ def remove_urls(text):
                                   flags=re.IGNORECASE)
     # Use the sub method to replace all matches with an empty string
     cleaned_text = re.sub(combined_pattern, '', text)
-    cleaned_text = re.sub(r'\d+', '',  cleaned_text)
-    cleaned_text = re.sub(r'[^a-zA-Z0-9.,)\-(/?\t ]','', cleaned_text)
-    cleaned_text = re.sub(r'[^a-zA-Z0-9.,)\-(/?\t ]','', cleaned_text) # removing everything other than these a-zA-Z0-9.,)\-(/?\t
+    cleaned_text = re.sub(r'\d+', '', cleaned_text)
+    cleaned_text = re.sub(r'[^a-zA-Z0-9.,)\-(/?\t ]', '', cleaned_text)
+    cleaned_text = re.sub(r'[^a-zA-Z0-9.,)\-(/?\t ]', '',
+                          cleaned_text)  # removing everything other than these a-zA-Z0-9.,)\-(/?\t
     cleaned_text = re.sub(r'(?<=[^0-9])/(?=[^0-9])', ' ', cleaned_text)
-    cleaned_text = re.sub("\t+", " ", cleaned_text) # converting multiple tabs and spaces ito a single tab or space
+    cleaned_text = re.sub("\t+", " ", cleaned_text)  # converting multiple tabs and spaces ito a single tab or space
     cleaned_text = re.sub(" +", " ", cleaned_text)
-    cleaned_text = re.sub("\.\.+", "",   cleaned_text)  # these were the commmon noises in out data, depends on data
-    cleaned_text = re.sub("\A ?", "",  cleaned_text)
+    cleaned_text = re.sub("\.\.+", "", cleaned_text)  # these were the commmon noises in out data, depends on data
+    cleaned_text = re.sub("\A ?", "", cleaned_text)
 
-      # dividing into para wrt to roman points
+    # dividing into para wrt to roman points
     cleaned_text = re.sub(r"[()[\]\"$']", " ", cleaned_text)  # removing ()[\]\"$' these characters
-    cleaned_text = re.sub(r" no.", " number", cleaned_text)  # converting no., nos., co., ltd.  to number, numbers, company and limited
+    cleaned_text = re.sub(r" no.", " number",
+                          cleaned_text)  # converting no., nos., co., ltd.  to number, numbers, company and limited
     cleaned_text = re.sub(r" nos.", " numbers", cleaned_text)
     cleaned_text = re.sub(r" co.", " company", cleaned_text)
-    cleaned_text = re.sub(r" ltd.", " limited", cleaned_text)
-
-    # Tokenize the cleaned text
-    words = word_tokenize(cleaned_text)
-
-    # Get a list of English stop words
-    stop_words = set(stopwords.words('english'))
-
-    # Remove stop words
-    filtered_words = [word.lower() for word in words if word.lower() not in stop_words]
-
-    # Join the filtered words back into a string
-    processed_text = ' '.join(filtered_words)
+    processed_text = re.sub(r" ltd.", " limited", cleaned_text)
 
     return processed_text
 #___________________________________________________________
@@ -71,10 +69,11 @@ def sidebar():
     with st.sidebar:
         genre = st.radio(
             "Choose your model",
-            ["InLegalBERT","CustomInLegalBERT","CustomInLegalRoBERTa"],
+            ["InLegalBERT","CaseInLegalBERT","CustomInLegalBERT"],
             index=None
         )
         return genre
+
 
 #___________________________________________________________
 
@@ -82,36 +81,53 @@ def inlegal_bert_judgment(text):
     model_name = 'law-ai/InLegalBERT'
     tokenizer = AutoTokenizer.from_pretrained(model_name, use_fast=True)
     model = AutoModelForSequenceClassification.from_pretrained(model_name)
-    inputs = tokenizer(text, return_tensors="pt", truncation=True, padding=True)
-    outputs = model(**inputs)
+    inputs = tokenizer(text, return_tensors="pt", truncation=True, padding="max_length", max_length=512)
+
+    with torch.no_grad():
+        outputs = model(**inputs)
+
     logits = outputs.logits
     probabilities = torch.nn.functional.softmax(logits, dim=1)
     predicted_class = torch.argmax(probabilities).item()
-    return predicted_class, probabilities[0].tolist()
 
-def custom_bert_judgment(text):
+    predicted_prob_positive = probabilities[0][1].item()
+    predicted_class_binary = 1 if predicted_prob_positive > 0.5 else 0
 
-    model_path = 'path/to/your/fine_tuned_model'
-    tokenizer_path = 'path/to/your/tokenizer'
+    return predicted_class, predicted_class_binary, probabilities, predicted_prob_positive
 
-    model = AutoModelForSequenceClassification.from_pretrained(model_path)
-    tokenizer = AutoTokenizer.from_pretrained(tokenizer_path)
-    inputs = tokenizer(text, return_tensors="pt", truncation=True, padding=True)
-    outputs = model(**inputs)
+
+def caselaw_bert_judgment(text):
+    model_name = 'law-ai/InCaseLawBERT'
+    tokenizer = AutoTokenizer.from_pretrained(model_name, use_fast=True)
+    model = AutoModelForSequenceClassification.from_pretrained(model_name)
+    inputs = tokenizer(text, return_tensors="pt", truncation=True, padding="max_length", max_length=512)
+
+    with torch.no_grad():
+        outputs = model(**inputs)
+
     logits = outputs.logits
     probabilities = torch.nn.functional.softmax(logits, dim=1)
     predicted_class = torch.argmax(probabilities).item()
-    return predicted_class, probabilities[0].tolist()
 
+    predicted_prob_positive = probabilities[0][1].item()
+    predicted_class_binary = 1 if predicted_prob_positive > 0.5 else 0
 
-def custom_roberta_judgment(text):
-    model_path = 'path/to/your/fine_tuned_model'
-    tokenizer_path = 'path/to/your/tokenizer'
-    model = AutoModelForSequenceClassification.from_pretrained(model_path)
-    tokenizer = AutoTokenizer.from_pretrained(tokenizer_path)
-    inputs = tokenizer(text, return_tensors="pt", truncation=True, padding=True)
-    outputs = model(**inputs)
+    return  predicted_class,predicted_class_binary, probabilities, predicted_prob_positive
+
+def  custom_bert_judgment(text):
+
+    model = AutoModelForSequenceClassification.from_pretrained('law-ai/CustomInLawBERT')
+    tokenizer = AutoTokenizer.from_pretrained('law-ai/CustomInLawBERT')
+    inputs = tokenizer(text, return_tensors="pt", truncation=True, padding="max_length", max_length=512)
+
+    with torch.no_grad():
+        outputs = model(**inputs)
+
     logits = outputs.logits
     probabilities = torch.nn.functional.softmax(logits, dim=1)
     predicted_class = torch.argmax(probabilities).item()
-    return predicted_class, probabilities[0].tolist()
+
+    predicted_prob_positive = probabilities[0][1].item()
+    predicted_class_binary = 1 if predicted_prob_positive > 0.5 else 0
+
+    return predicted_class, predicted_class_binary, probabilities, predicted_prob_positive

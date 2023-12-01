@@ -1,28 +1,73 @@
 import streamlit as st
 import utils
 import random
+import pandas as pd
+import base64
+import os
 import torch
 import matplotlib.pyplot as plt
-from sklearn.metrics import confusion_matrix, ConfusionMatrixDisplay, precision_recall_curve, auc
+from sklearn.metrics import confusion_matrix, ConfusionMatrixDisplay, precision_recall_curve, auc,accuracy_score
 import numpy as np
 
-#____________________________________Packages_____________________________________________________
-def main():
-    st.header("Understand the Topic of Different Legal Text Clauses")
-    st.divider()
 
-    st.subheader("Step 1: Choose a sample text to analyze: \n Sample txt")
+#____________________________________Packages_____________________________________________________
+prediction_results = {}
+# Function to get base64 of a binary file
+@st.cache_data
+def get_base64_of_bin_file(bin_file):
+    with open(bin_file, 'rb') as f:
+        data = f.read()
+    return base64.b64encode(data).decode()
+
+# Function to set PNG as page background with shadow effect
+@st.cache_data
+def set_png_as_page_bg(png_file,opacity=0.7):
+    bin_str = get_base64_of_bin_file(png_file)
+    page_bg_img = '''
+    <style>
+    .stApp {
+        background-image: url("data:image/png;base64,%s");
+        background-size: cover;
+        background-repeat: no-repeat;
+        background-attachment: scroll;
+       opacity: {opacity};
+    }
+    </style>
+    ''' % bin_str
+
+    st.markdown(page_bg_img, unsafe_allow_html=True)
+
+# Set the working directory
+os.chdir(os.path.dirname(os.path.abspath(__file__)))
+os.chdir('..')
+
+# Specify the path to your background image
+background_image_path = "/Users/brundamariswamy/Downloads/court.jpg"
+
+# Call the function to set the background image with shadow effect
+set_png_as_page_bg(background_image_path)
+
+
+def main():
+
+    st.markdown("<h1 style='font-size: 4.5em; color: #000000; font-weight: bold;'>Predicting Legal Case Judgement</h1>", unsafe_allow_html=True)
+
+    st.divider()
+    st.markdown("<h1 style='font-size: 2.0em; color: #000000; font-weight: bold;'>Step 1: Choose a sample text to analyze:</h1>", unsafe_allow_html=True)
+
+
+
     df_file = utils.upload_file("Upload text file")
 
     if df_file is not None:
         # Remove URLs from the text
         cleaned_text = utils.remove_urls(df_file)
 
-        # Display the processed text
-        words = cleaned_text.split()[-512:]
-        st.write("Sample Case Text:")
+        words = cleaned_text.split()[-200:]
+        st.write("Sample Legal Case Text:")
         st.write(' '.join(words))
-    st.subheader("Step 2: Choose a model from the left sidebar")
+
+    st.markdown("<h1 style='font-size: 2.0em; color: #000000; font-weight: bold;'>Step 2: Choose a model from the left sidebar:</h1>",unsafe_allow_html=True)
 
     model_name = utils.sidebar()
 
@@ -30,137 +75,100 @@ def main():
     random.seed(seed)
     if model_name == "InLegalBERT":
 
-        true_labels = []
-        prediction, probabilities = utils.inlegal_bert_judgment(cleaned_text)
-        st.header("InLegalBERT Prediction Result:")
-        st.write(f"InLegalBERT Predicted Class: {'Accepted' if prediction == 1 else 'Rejected'}")
-        st.write(f"Confidence: {probabilities[prediction]:.2%}")
-        true_labels.append(st.radio("True Label:", ["Rejected", "Accepted"]))
+        if "InLegalBERT" not in prediction_results:
 
-        # Evaluate confusion matrix if at least one document is uploaded
-        if true_labels:
-            st.header("Confusion Matrix:")
+            predicted_class, predicted_class_binary, probabilities, predicted_prob_positive = utils.inlegal_bert_judgment(
+                    cleaned_text)
+            prediction_results["InLegalBERT"] = {
+                    "predicted_class": predicted_class,
+                    "predicted_class_binary": predicted_class_binary,
+                    "probabilities": probabilities,
+                    "predicted_prob_positive": predicted_prob_positive
+            }
 
-            # Convert true labels to binary format (0 for Rejected, 1 for Accepted)
-            true_labels_binary = [0 if label == "Rejected" else 1 for label in true_labels]
+                # Access the stored prediction results
+            stored_results = prediction_results["InLegalBERT"]
 
-            # Create confusion matrix
-            y_true = np.array(true_labels_binary)
-            y_pred = np.array([prediction])
-            cm = confusion_matrix(y_true, y_pred, labels=[0, 1])
+            # Interpret the result
+            prediction_label = "Accepted" if stored_results["predicted_class_binary"] == 1 else "Rejected"
 
-            # Display confusion matrix
-            disp = ConfusionMatrixDisplay(confusion_matrix=cm, display_labels=["Rejected", "Accepted"])
-            disp.plot()
-            st.pyplot()
+            # Convert probabilities to a percentage
+            confidence_percentage = round(stored_results["predicted_prob_positive"] * 100, 2)
+            confidence_values = [stored_results["predicted_prob_positive"],
+                                 1 - stored_results["predicted_prob_positive"]]
 
-            st.header("Precision-Recall Curve:")
-            precision, recall, _ = precision_recall_curve(true_labels_binary, [probabilities[0], probabilities[1]])
+            # Display prediction and confidence percentage
+            st.write(f"Predicted Class: {prediction_label}")
 
-            # Calculate AUC
-            auc_score = auc(recall, precision)
+            # Display prediction and confidence chart with custom colors
+            st.subheader("Prediction Confidence Bar Chart:")
+            confidence_values = [1 - stored_results["predicted_prob_positive"],
+                                 stored_results["predicted_prob_positive"]]
+            colors = ['#00ff00'] if stored_results["predicted_class_binary"] == 1 else ['#ff0000']
+            st.bar_chart({"Prediction Confidence": confidence_values}, height=200, color=colors)
 
-            # Plot Precision-Recall Curve
-            plt.plot(recall, precision, label=f'AUC = {auc_score:.2f}')
-            plt.xlabel('Recall')
-            plt.ylabel('Precision')
-            plt.title('Precision-Recall Curve')
-            plt.legend(loc='best')
-            st.pyplot(plt)
+    elif model_name == "CaseInLegalBERT":
+        if "CaseInLegalBERT" not in prediction_results:
+            predicted_class, predicted_class_binary, probabilities, predicted_prob_positive = utils.caselaw_bert_judgment(
+                cleaned_text)
+            prediction_results["CaseInLegalBERT"] = {
+                "predicted_class": predicted_class,
+                "predicted_class_binary": predicted_class_binary,
+                "probabilities": probabilities,
+                "predicted_prob_positive": predicted_prob_positive
+            }
 
+            # Access the stored prediction results
+        stored_results = prediction_results["CaseInLegalBERT"]
 
+        # Interpret the result
+        prediction_label = "Accepted" if stored_results["predicted_class_binary"] == 1 else "Rejected"
+
+        # Convert probabilities to a percentage
+        confidence_percentage = round(stored_results["predicted_prob_positive"] * 100, 2)
+        confidence_values = [stored_results["predicted_prob_positive"], 1 - stored_results["predicted_prob_positive"]]
+
+        # Display prediction and confidence percentage
+        st.write(f"Predicted Class: {prediction_label}")
+
+        # Display prediction and confidence chart with custom colors
+        st.subheader("Prediction Confidence Bar Chart:")
+        confidence_values = [1 - stored_results["predicted_prob_positive"], stored_results["predicted_prob_positive"]]
+        colors = ['#00ff00'] if stored_results["predicted_class_binary"] == 1 else ['#ff0000']
+        st.bar_chart({"Prediction Confidence": confidence_values}, height=200, color=colors)
 
     elif model_name == "CustomInLegalBERT":
-        true_labels = []
-        prediction, probabilities = utils.custom_bert_judgment(cleaned_text)
 
-        # Display the results
-        st.header("CustomInLegalBERT Prediction Result:")
-        st.write(f"CustomInLegalBERT Predicted Class: {'Accepted' if prediction == 1 else 'Rejected'}")
-        st.write(f"Confidence: {probabilities[prediction]:.2%}")
-        # Collect true labels
-        true_labels.append(st.radio("True Label:", ["Rejected", "Accepted"]))
+        if "CustomInLegalBERT" not in prediction_results:
+            predicted_class, predicted_class_binary, probabilities, predicted_prob_positive = utils.custom_bert_judgment(
+                cleaned_text)
+            prediction_results["CustomInLegalBERT"] = {
+                "predicted_class": predicted_class,
+                "predicted_class_binary": predicted_class_binary,
+                "probabilities": probabilities,
+                "predicted_prob_positive": predicted_prob_positive
+            }
 
-        # Evaluate confusion matrix if at least one document is uploaded
-        if true_labels:
-            st.header("CustomInLegalBERT Confusion Matrix:")
+            # Access the stored prediction results
+        stored_results = prediction_results["CustomInLegalBERT"]
 
-            # Convert true labels to binary format (0 for Rejected, 1 for Accepted)
-            true_labels_binary = [0 if label == "Rejected" else 1 for label in true_labels]
+        # Interpret the result
+        prediction_label = "Accepted" if stored_results["predicted_class_binary"] == 1 else "Rejected"
 
-            # Create confusion matrix
-            y_true = np.array(true_labels_binary)
-            y_pred = np.array([prediction])
-            cm = confusion_matrix(y_true, y_pred, labels=[0, 1])
+        # Convert probabilities to a percentage
+        confidence_percentage = round(stored_results["predicted_prob_positive"] * 100, 2)
+        confidence_values = [stored_results["predicted_prob_positive"], 1 - stored_results["predicted_prob_positive"]]
 
-            # Display confusion matrix
-            disp = ConfusionMatrixDisplay(confusion_matrix=cm, display_labels=["Rejected", "Accepted"])
-            disp.plot()
-            st.pyplot()
+        # Display prediction and confidence percentage
+        st.write(f"Predicted Class: {prediction_label}")
 
-            st.header("CustomInLegalBERT Precision-Recall Curve:")
-            precision, recall, _ = precision_recall_curve(true_labels_binary, [probabilities[0], probabilities[1]])
-
-            # Calculate AUC
-            auc_score = auc(recall, precision)
-
-            # Plot Precision-Recall Curve
-            plt.plot(recall, precision, label=f'AUC = {auc_score:.2f}')
-            plt.xlabel('Recall')
-            plt.ylabel('Precision')
-            plt.title('Precision-Recall Curve')
-            plt.legend(loc='best')
-            st.pyplot(plt)
-
-    elif model_name == "CustomInLegalRoBERTa":
-
-        true_labels = []
-        prediction, probabilities = utils.custom_roberta_judgment(cleaned_text)
-
-        # Display the results
-        st.header("CustomInLegalRoBERTa Prediction Result:")
-        st.write(f"CustomInLegalRoBERTa Predicted Class: {'Accepted' if prediction == 1 else 'Rejected'}")
-        st.write(f"Confidence: {probabilities[prediction]:.2%}")
-
-        # Collect true labels
-        true_labels.append(st.radio("True Label:", ["Rejected", "Accepted"]))
-
-        # Evaluate confusion matrix if at least one document is uploaded
-        if true_labels:
-            st.header("CustomInLegalRoBERTaConfusion Matrix:")
-
-            # Convert true labels to binary format (0 for Rejected, 1 for Accepted)
-            true_labels_binary = [0 if label == "Rejected" else 1 for label in true_labels]
-
-            # Create confusion matrix
-            y_true = np.array(true_labels_binary)
-            y_pred = np.array([prediction])
-            cm = confusion_matrix(y_true, y_pred, labels=[0, 1])
-
-            # Display confusion matrix
-            disp = ConfusionMatrixDisplay(confusion_matrix=cm, display_labels=["Rejected", "Accepted"])
-            disp.plot()
-            st.pyplot()
-
-            # Calculate and plot Precision-Recall curve
-            st.header("CustomInLegalRoBERTa Precision-Recall Curve:")
-
-            # Get probabilities for the positive class (Accepted)
-            positive_probs = probabilities[1]
-
-            # Calculate Precision-Recall curve
-            precision, recall, _ = precision_recall_curve(y_true, positive_probs)
-            area_under_curve = auc(recall, precision)
-
-            # Plot Precision-Recall curve
-            plt.figure()
-            plt.plot(recall, precision, color='darkorange', lw=2, label=f'Area Under Curve = {area_under_curve:.2f}')
-            plt.xlabel('Recall')
-            plt.ylabel('Precision')
-            plt.title('Precision-Recall Curve')
-            plt.legend(loc="lower right")
-            st.pyplot(plt)
+        # Display prediction and confidence chart with custom colors
+        st.subheader("Prediction Confidence Bar Chart:")
+        confidence_values = [1 - stored_results["predicted_prob_positive"], stored_results["predicted_prob_positive"]]
+        colors = ['#00ff00'] if stored_results["predicted_class_binary"] == 1 else ['#ff0000']
+        st.bar_chart({"Prediction Confidence": confidence_values}, height=200, color=colors)
 
 
 if __name__ == "__main__":
+
     main()
