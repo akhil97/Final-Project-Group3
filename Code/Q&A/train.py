@@ -73,7 +73,31 @@ tokenizer = AutoTokenizer.from_pretrained(model_checkpoint)
 df_train=df_train[['question','human_ans_indices','review','human_ans_spans']]
 df_test=df_test[['question','human_ans_indices','review','human_ans_spans']]
 
+import torch
+import torch.nn as nn
+import torch.nn.functional as F
+from transformers import AutoModel, BertModel, DistilBertModel
 
+
+checkpoint = "distilbert-base-uncased"
+
+
+class BertRNNModel(nn.Module):
+    def __init__(self, checkpoint, num_labels):
+        super(BertRNNModel, self).__init__()
+        self.bert = BertModel.from_pretrained(checkpoint)
+        self.lstm = nn.LSTM(768, 256, 2,
+                            bidirectional=True, batch_first=True, dropout=0.2)
+        self.dropout = nn.Dropout(0.2)
+        self.fc_rnn = nn.Linear(256 * 2, num_labels)
+
+    def forward(self, **batch):
+        encoder_out = self.bert(input_ids=batch['input_ids'], attention_mask=batch['attention_mask'])
+        out, _ = self.lstm(encoder_out[1])
+        out = self.dropout(out)
+        out = self.fc_rnn(out)  # hidden state
+        return out
+        
 import numpy as np
 df_train['id']=np.linspace(0,len(df_train)-1,len(df_train))
 df_test['id']=np.linspace(0,len(df_test)-1,len(df_test))
@@ -403,21 +427,7 @@ compute_metrics(start_logits, end_logits, validation_dataset, val_dataset2)
 trainer.push_to_hub(commit_message="Training complete")
 
 
-predictions, _, _ = trainer.predict(validation_dataset)
-start_logits, end_logits = predictions
-compute_metrics(start_logits, end_logits, validation_dataset, val_dataset2)
 
-
-from transformers import pipeline
-
-# Replace this with your own checkpoint
-model_checkpoint2 = "skandavivek2/roberta-finetuned-subjqa-movies_2"
-question_answerer = pipeline("question-answering", model=model_checkpoint2)
-
-
-import pandas as pd
-df_train1=pd.read_csv('train.csv')
-df_test1=pd.read_csv('test.csv')
 
 
 context = df_train1.iloc[13].review
