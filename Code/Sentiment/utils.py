@@ -5,6 +5,7 @@ from nltk.corpus import stopwords
 from nltk.tokenize import word_tokenize
 from transformers import BertTokenizer, BertForSequenceClassification, AutoTokenizer, AutoModel,AutoModelForSequenceClassification
 import torch
+import spacy
 
 import matplotlib.pyplot as plt
 from sklearn.metrics import confusion_matrix, ConfusionMatrixDisplay
@@ -131,3 +132,28 @@ def  custom_bert_judgment(text):
     predicted_class_binary = 1 if predicted_prob_positive > 0.5 else 0
 
     return predicted_class, predicted_class_binary, probabilities, predicted_prob_positive
+# ------------------
+import spacy
+
+
+
+# Load the spaCy model
+nlp = spacy.load("en_legal_ner_trf")
+
+# Function to process text from a file
+def process_text_from_file(text):
+    # Read text from the file
+
+
+    doc = nlp(text)
+
+    # Create a dictionary to store entities by their names
+    entity_dict = {}
+
+    # Extract and store entities by their names
+    for ent in doc.ents:
+        if ent.label_ not in entity_dict:
+            entity_dict[ent.label_] = set()
+        entity_dict[ent.label_].add(ent.text)
+
+    return entity_dict

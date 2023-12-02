@@ -50,9 +50,9 @@ set_png_as_page_bg(background_image_path)
 
 def main():
 
-    st.markdown("<h1 style='font-size: 4.5em; color: #000000; font-weight: bold;'>Predicting Legal Case Judgement</h1>", unsafe_allow_html=True)
+    st.markdown("<h1 style='font-size: 3.5em; color: #000000; font-weight: bold;'> Legal Case Judgement  Prediction and Extracting  Legal Named Entities</h1>", unsafe_allow_html=True)
 
-    st.divider()
+
     st.markdown("<h1 style='font-size: 2.0em; color: #000000; font-weight: bold;'>Step 1: Choose a sample text to analyze:</h1>", unsafe_allow_html=True)
 
 
@@ -79,6 +79,8 @@ def main():
 
             predicted_class, predicted_class_binary, probabilities, predicted_prob_positive = utils.inlegal_bert_judgment(
                     cleaned_text)
+
+
             prediction_results["InLegalBERT"] = {
                     "predicted_class": predicted_class,
                     "predicted_class_binary": predicted_class_binary,
@@ -99,6 +101,7 @@ def main():
 
             # Display prediction and confidence percentage
             st.write(f"Predicted Class: {prediction_label}")
+            # Display the extracted entities
 
             # Display prediction and confidence chart with custom colors
             st.subheader("Prediction Confidence Bar Chart:")
@@ -107,10 +110,20 @@ def main():
             colors = ['#00ff00'] if stored_results["predicted_class_binary"] == 1 else ['#ff0000']
             st.bar_chart({"Prediction Confidence": confidence_values}, height=200, color=colors)
 
+            st.subheader("Predicting Legal Named Entities")
+            entities = utils.process_text_from_file(df_file)
+            for label, entities_list in entities.items():
+                st.write(f"<span style='font-weight: bold; color: #001f3f;font-size: 1.5em;'>{label}:</span> {', '.join(entities_list)}",
+                    unsafe_allow_html=True)
+
+
+
     elif model_name == "CaseInLegalBERT":
         if "CaseInLegalBERT" not in prediction_results:
             predicted_class, predicted_class_binary, probabilities, predicted_prob_positive = utils.caselaw_bert_judgment(
                 cleaned_text)
+
+
             prediction_results["CaseInLegalBERT"] = {
                 "predicted_class": predicted_class,
                 "predicted_class_binary": predicted_class_binary,
@@ -137,11 +150,20 @@ def main():
         colors = ['#00ff00'] if stored_results["predicted_class_binary"] == 1 else ['#ff0000']
         st.bar_chart({"Prediction Confidence": confidence_values}, height=200, color=colors)
 
+        st.subheader("Predicting Legal Named Entities")
+        entities = utils.process_text_from_file(df_file)
+        for label, entities_list in entities.items():
+            st.write(f"<span style='font-weight: bold; color: #001f3f;font-size: 1.5em;'>{label}:</span> {', '.join(entities_list)}",unsafe_allow_html=True)
+
+
     elif model_name == "CustomInLegalBERT":
 
         if "CustomInLegalBERT" not in prediction_results:
             predicted_class, predicted_class_binary, probabilities, predicted_prob_positive = utils.custom_bert_judgment(
                 cleaned_text)
+
+            entities = utils.process_text_from_file(cleaned_text)
+
             prediction_results["CustomInLegalBERT"] = {
                 "predicted_class": predicted_class,
                 "predicted_class_binary": predicted_class_binary,
@@ -167,6 +189,16 @@ def main():
         confidence_values = [1 - stored_results["predicted_prob_positive"], stored_results["predicted_prob_positive"]]
         colors = ['#00ff00'] if stored_results["predicted_class_binary"] == 1 else ['#ff0000']
         st.bar_chart({"Prediction Confidence": confidence_values}, height=200, color=colors)
+
+        st.subheader("Predicting Legal Named Entities")
+
+        entities = utils.process_text_from_file(df_file)
+        for label, entities_list in entities.items():
+            st.write(f"<span style='font-weight: bold; color: #001f3f;font-size: 1.5em;'>{label}:</span> {', '.join(entities_list)}", unsafe_allow_html=True)
+
+
+
+
 
 
 if __name__ == "__main__":
