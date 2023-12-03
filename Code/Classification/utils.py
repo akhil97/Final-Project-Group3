@@ -79,59 +79,74 @@ def sidebar():
 #___________________________________________________________
 
 def inlegal_bert_judgment(text):
-    model_name = 'law-ai/InLegalBERT'
-    tokenizer = AutoTokenizer.from_pretrained(model_name, use_fast=True)
-    model = AutoModelForSequenceClassification.from_pretrained(model_name)
-    inputs = tokenizer(text, return_tensors="pt", truncation=True, padding="max_length", max_length=512)
+    seed_value = 42
+    torch.manual_seed(seed_value)
+    torch.cuda.manual_seed(seed_value)
+    # Load tokenizer and model
+    tokenizer = AutoTokenizer.from_pretrained("law-ai/InLegalBERT")
+    model = AutoModelForSequenceClassification.from_pretrained("law-ai/InLegalBERT")
+
+    inputs = tokenizer(text[-512:], return_tensors="pt")
 
     with torch.no_grad():
+        torch.manual_seed(seed_value)
+        torch.cuda.manual_seed(seed_value)
         outputs = model(**inputs)
 
     logits = outputs.logits
+    # Apply softmax to obtain class probabilities
     probabilities = torch.nn.functional.softmax(logits, dim=1)
-    predicted_class = torch.argmax(probabilities).item()
+    # Get the predicted class label
+    predicted_class = torch.argmax(probabilities, dim=1).item()
 
-    predicted_prob_positive = probabilities[0][1].item()
-    predicted_class_binary = 1 if predicted_prob_positive > 0.5 else 0
-
-    return predicted_class, predicted_class_binary, probabilities, predicted_prob_positive
-
+    return probabilities,predicted_class
 
 def caselaw_bert_judgment(text):
-    model_name = 'law-ai/InCaseLawBERT'
-    tokenizer = AutoTokenizer.from_pretrained(model_name, use_fast=True)
-    model = AutoModelForSequenceClassification.from_pretrained(model_name)
-    inputs = tokenizer(text, return_tensors="pt", truncation=True, padding="max_length", max_length=512)
+
+    seed_value = 42
+    torch.manual_seed(seed_value)
+    torch.cuda.manual_seed(seed_value)
+    # Load tokenizer and model
+    tokenizer = AutoTokenizer.from_pretrained("law-ai/InCaseLawBERT")
+    model = AutoModelForSequenceClassification.from_pretrained("law-ai/InCaseLawBERT")
+
+    inputs = tokenizer(text[-512:], return_tensors="pt")
 
     with torch.no_grad():
+        torch.manual_seed(seed_value)
+        torch.cuda.manual_seed(seed_value)
         outputs = model(**inputs)
 
     logits = outputs.logits
+    # Apply softmax to obtain class probabilities
     probabilities = torch.nn.functional.softmax(logits, dim=1)
-    predicted_class = torch.argmax(probabilities).item()
+    # Get the predicted class label
+    predicted_class = torch.argmax(probabilities, dim=1).item()
 
-    predicted_prob_positive = probabilities[0][1].item()
-    predicted_class_binary = 1 if predicted_prob_positive > 0.5 else 0
-
-    return  predicted_class,predicted_class_binary, probabilities, predicted_prob_positive
+    return probabilities, predicted_class
 
 def  custom_bert_judgment(text):
+    seed_value = 42
+    torch.manual_seed(seed_value)
+    torch.cuda.manual_seed(seed_value)
+    # Load tokenizer and model
+    tokenizer = AutoTokenizer.from_pretrained("law-ai/CustomInLawBERT")
+    model = AutoModelForSequenceClassification.from_pretrained("law-ai/CustomInLawBERT")
 
-    model = AutoModelForSequenceClassification.from_pretrained('law-ai/CustomInLawBERT')
-    tokenizer = AutoTokenizer.from_pretrained('law-ai/CustomInLawBERT')
-    inputs = tokenizer(text, return_tensors="pt", truncation=True, padding="max_length", max_length=512)
+    inputs = tokenizer(text[-512:], return_tensors="pt")
 
     with torch.no_grad():
+        torch.manual_seed(seed_value)
+        torch.cuda.manual_seed(seed_value)
         outputs = model(**inputs)
 
     logits = outputs.logits
+    # Apply softmax to obtain class probabilities
     probabilities = torch.nn.functional.softmax(logits, dim=1)
-    predicted_class = torch.argmax(probabilities).item()
+    # Get the predicted class label
+    predicted_class = torch.argmax(probabilities, dim=1).item()
 
-    predicted_prob_positive = probabilities[0][1].item()
-    predicted_class_binary = 1 if predicted_prob_positive > 0.5 else 0
-
-    return predicted_class, predicted_class_binary, probabilities, predicted_prob_positive
+    return probabilities, predicted_class
 # ------------------
 import spacy
 
