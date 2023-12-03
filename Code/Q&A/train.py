@@ -1,4 +1,3 @@
-import os
 from transformers import DistilBertTokenizer, DistilBertForMaskedLM, GPT2Tokenizer, GPT2LMHeadModel, Trainer, TrainingArguments
 from transformers import TextDataset, DataCollatorForLanguageModeling
 from datasets import load_dataset, concatenate_datasets, Dataset
