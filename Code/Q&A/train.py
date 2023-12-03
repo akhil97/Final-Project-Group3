@@ -35,62 +35,20 @@ def load_data_collator(tokenizer, mlm=False):
 
 from sklearn.metrics import accuracy_score, precision_recall_fscore_support
 
-def compute_metrics(eval_pred):
-    logits, labels = eval_pred
-    predictions = np.argmax(logits, axis=-1)
-
-    # Calculate accuracy
-    accuracy = accuracy_score(labels, predictions)
-
-    # Calculate precision, recall, and F1 score
-    precision, recall, f1, _ = precision_recall_fscore_support(labels, predictions, average='binary')
-
-    return {
-        'accuracy': accuracy,
-        'precision': precision,
-        'recall': recall,
-        'f1': f1
-    }
-
-def train_and_evaluate(dataset_name, subsets, model_name, output_dir, overwrite_output_dir,
-                       per_device_train_batch_size, num_train_epochs, save_steps, fp16):
-    tokenizer = DistilBertTokenizer.from_pretrained(model_name)
-    
-    train_dataset = prepare_dataset(dataset_name, subsets, 'train', tokenizer)
-    eval_dataset = prepare_dataset(dataset_name, subsets, 'test', tokenizer)
-
-    data_collator = load_data_collator(tokenizer)
-
-    tokenizer.save_pretrained(output_dir)
-    model = DistilBertForMaskedLM.from_pretrained(model_name)
-    model.to('cuda') 
-    model.save_pretrained(output_dir)
-
-    training_args = TrainingArguments(
-        output_dir=output_dir,
-        overwrite_output_dir=overwrite_output_dir,
-        per_device_train_batch_size=per_device_train_batch_size,
-        num_train_epochs=num_train_epochs,
-        save_steps=save_steps,
-        evaluation_strategy="epoch",  
-        logging_steps=1000,
-        fp16=True
+def load_repository_only_data(language, data_type):
+    # Load the dataset with repo_data_only set to True
+    dataset = load_dataset(
+        "joelniklaus/Multi_Legal_Pile",
+        name=f"{language}_{data_type}",
+        repo_data_only=True
     )
 
-    # Clear CUDA cache periodically
-    torch.cuda.empty_cache()
-    trainer = Trainer(
-        model=model,
-        args=training_args,
-        data_collator=data_collator,
-        train_dataset=train_dataset,
-        eval_dataset=eval_dataset,
-        compute_metrics=compute_metrics
-    )
+    return dataset
 
-    trainer.train()
-    trainer.save_model()
-    trainer.evaluate()
+# Example usage
+language = "all"  # Example language
+data_type = "all"  # Example data type
+dataset = load_repository_only_data(language, data_type)
 
 model_name = 'distilbert-base-uncased'
 output_dir = 'output'
