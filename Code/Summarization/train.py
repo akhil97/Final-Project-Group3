@@ -1,72 +1,83 @@
-import datasets
-import pandas as pd
-from transformers import DataCollatorForSeq2Seq
-from transformers import AutoModelForSeq2SeqLM, AutoTokenizer, Trainer, TrainingArguments
+import torch
+from transformers import T5Tokenizer, T5ForConditionalGeneration, Trainer, TrainingArguments
 from datasets import load_metric
 from datasets import load_dataset
 
-dataset = load_dataset("ninadn/indian-legal")
+data = load_dataset("lighteval/legal_summarization", "BillSum")
 
-print(dataset.items())
+print(data.items())
 
 def show_samples(dataset, num_samples=3, seed=42):
     sample = dataset['train'].shuffle(seed=seed).select(range(num_samples))
     for example in sample:
-        print(f"\n'>> Text: {example['Text']}'")
-        print(f"'>> Summary: {example['Summary']}'")
+        print(f"\n'>> Article: {example['article']}'")
+        print(f"'>> Summary: {example['summary']}'")
 
-show_samples(dataset)
+show_samples(data)
 
-device = 'gpu'
-model_ckpt = 'facebook/bart-large-cnn'
-tokenizer = AutoTokenizer.from_pretrained(model_ckpt, add_prefix_space=True, use_fast=False)
-model = AutoModelForSeq2SeqLM.from_pretrained(model_ckpt)
+# Load the model and tokenizer
+model_name = "t5-base"
+tokenizer = T5Tokenizer.from_pretrained(model_name)
+model = T5ForConditionalGeneration.from_pretrained(model_name)
 
-dataset = dataset.filter(lambda x: x["Summary"] is not None)
+# Tokenize the dataset
+def tokenize_function(examples):
+    inputs = tokenizer(examples["article"], max_length=512, truncation=True, padding="max_length", return_tensors="pt")
+    targets = tokenizer(examples["summary"], max_length=150, truncation=True, padding="max_length", return_tensors="pt")
 
-article_len = [len(x['Text']) for x in dataset['train']]
-summary_len = [len(x['Summary']) for x in dataset['train']]
+    # Ensure decoder_input_ids are used during training
+    inputs["decoder_input_ids"] = targets["input_ids"]
+    inputs["labels"] = targets["input_ids"].clone()
 
-data = pd.DataFrame([article_len, summary_len]).T
-data.columns = ['Text Length', 'Summary Length']
+    return inputs
 
-data.hist(figsize=(15, 5))
+tokenized_datasets = data.map(tokenize_function, batched=True)
 
-
-def get_feature(batch):
-    encodings = tokenizer(batch['Text'], text_target=batch['Summary'],
-                          max_length=512, truncation=True, padding='max_length')
-
-    input_encodings = {'input_ids': encodings['input_ids'],
-                       'attention_mask': encodings['attention_mask'],
-                       'labels': encodings['labels']}
-    return input_encodings
-
-data_pt = dataset.map(get_feature, batched = True)
-
-print(data_pt)
-
-columns = ['input_ids', 'labels', 'attention_mask']
-data_pt.set_format(type='torch', columns=columns)
-
-data_collator = DataCollatorForSeq2Seq(tokenizer, model = model)
-
+# Define the training arguments
 training_args = TrainingArguments(
-    output_dir = 'bart_legal',
-    num_train_epochs = 3,
-    warmup_steps = 500,
-    learning_rate = 1e-5,
-    per_device_train_batch_size=32,
-    per_device_eval_batch_size=32,
-    weight_decay = 0.01,
-    logging_steps = 10,
-    evaluation_strategy = 'steps',
-    eval_steps = 500,
-    save_steps = 1e6,
-    fp16 = True,
-    gradient_accumulation_steps = 16
+    output_dir="./legal_summarization",
+    per_device_train_batch_size=4,
+    per_device_eval_batch_size=4,
+    gradient_accumulation_steps=4,
+    save_steps=1000,
+    evaluation_strategy="steps",
+    eval_steps=500,
+    save_total_limit=2,
+    num_train_epochs=3
 )
 
-trainer = Trainer(model = model, args = training_args, tokenizer = tokenizer, data_collator = data_collator, train_dataset = data_pt['train'], eval_dataset = data_pt['test'])
+# Define the evaluation metric
+rouge_metric = load_metric("rouge")
 
+# Define the training function
+def compute_metrics(p):
+    predictions, labels = p.predictions, p.label_ids
+    predictions = tokenizer.batch_decode(predictions, skip_special_tokens=True)
+    labels = tokenizer.batch_decode(labels, skip_special_tokens=True)
+
+    rouge_output = rouge_metric.compute(predictions=predictions, references=labels, use_stemmer=True)
+    return rouge_output
+
+
+# Train the model
+trainer = Trainer(
+    model=model,
+    args=training_args,
+    train_dataset=tokenized_datasets["train"],
+    eval_dataset=tokenized_datasets["test"],
+    compute_metrics=compute_metrics
+)
+
+# Fine-tune the model
 trainer.train()
+
+# Evaluate the model
+results = trainer.evaluate()
+
+# Print the ROUGE score
+print("ROUGE Score:", results["eval_rouge"])
+torch.cuda.empty_cache()
+
+# Save the fine-tuned model
+model.save_pretrained("./legal_summarization_finetuned")
+tokenizer.save_pretrained("./legal_summarization_finetuned")
