@@ -45,39 +45,3 @@ training_args = TrainingArguments(
     save_total_limit=2,
     num_train_epochs=3
 )
-
-# Define the evaluation metric
-rouge_metric = load_metric("rouge")
-
-# Define the training function
-def compute_metrics(p):
-    predictions, labels = p.predictions, p.label_ids
-    predictions = tokenizer.batch_decode(predictions, skip_special_tokens=True)
-    labels = tokenizer.batch_decode(labels, skip_special_tokens=True)
-
-    rouge_output = rouge_metric.compute(predictions=predictions, references=labels, use_stemmer=True)
-    return rouge_output
-
-
-# Train the model
-trainer = Trainer(
-    model=model,
-    args=training_args,
-    train_dataset=tokenized_datasets["train"],
-    eval_dataset=tokenized_datasets["test"],
-    compute_metrics=compute_metrics
-)
-
-# Fine-tune the model
-trainer.train()
-
-# Evaluate the model
-results = trainer.evaluate()
-
-# Print the ROUGE score
-print("ROUGE Score:", results["eval_rouge"])
-torch.cuda.empty_cache()
-
-# Save the fine-tuned model
-model.save_pretrained("./legal_summarization_finetuned")
-tokenizer.save_pretrained("./legal_summarization_finetuned")
