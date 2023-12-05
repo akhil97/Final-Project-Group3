@@ -8,4 +8,3 @@ st.subheader('_Streamlit_ is :blue[cool] :sunglasses:')
 
 st.subheader('Text Summarization', divider='rainbow')
 st.subheader('_Streamlit_ is :blue[cool] :sunglasses:')
-

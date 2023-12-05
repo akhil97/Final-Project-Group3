@@ -70,7 +70,7 @@ def sidebar():
     with st.sidebar:
         genre = st.radio(
             "Choose your model",
-            ["InLegalBERT","CaseInLegalBERT","CustomInLegalBERT"],
+            ["InLegalBERT","CustomInLegalBERT"],
             index=None
         )
         return genre
@@ -101,37 +101,15 @@ def inlegal_bert_judgment(text):
 
     return probabilities,predicted_class
 
-def caselaw_bert_judgment(text):
 
-    seed_value = 42
-    torch.manual_seed(seed_value)
-    torch.cuda.manual_seed(seed_value)
-    # Load tokenizer and model
-    tokenizer = AutoTokenizer.from_pretrained("law-ai/InCaseLawBERT")
-    model = AutoModelForSequenceClassification.from_pretrained("law-ai/InCaseLawBERT")
-
-    inputs = tokenizer(text[-512:], return_tensors="pt")
-
-    with torch.no_grad():
-        torch.manual_seed(seed_value)
-        torch.cuda.manual_seed(seed_value)
-        outputs = model(**inputs)
-
-    logits = outputs.logits
-    # Apply softmax to obtain class probabilities
-    probabilities = torch.nn.functional.softmax(logits, dim=1)
-    # Get the predicted class label
-    predicted_class = torch.argmax(probabilities, dim=1).item()
-
-    return probabilities, predicted_class
 
 def  custom_bert_judgment(text):
     seed_value = 42
     torch.manual_seed(seed_value)
     torch.cuda.manual_seed(seed_value)
     # Load tokenizer and model
-    tokenizer = AutoTokenizer.from_pretrained("law-ai/InCaseLawBERT")
-    model = AutoModelForSequenceClassification.from_pretrained("law-ai/InCaseLawBERT")
+    tokenizer = AutoTokenizer.from_pretrained("law-ai/CustomInLawBERT")
+    model = AutoModelForSequenceClassification.from_pretrained("law-ai/CustomInLawBERT")
 
     inputs = tokenizer(text[-512:], return_tensors="pt")
 
