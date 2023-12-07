@@ -1,6 +1,7 @@
 from transformers import PegasusForConditionalGeneration, PegasusTokenizer, Trainer, TrainingArguments
 import torch
 from datasets import load_dataset
+from rouge import Rouge
 
 
 class PegasusDataset(torch.utils.data.Dataset):
@@ -65,7 +66,7 @@ def prepare_fine_tuning(model_name, tokenizer, train_dataset, val_dataset, freez
     if val_dataset is not None:
         training_args = TrainingArguments(
             output_dir=output_dir,  # output directory
-            num_train_epochs=1,  # total number of training epochs
+            num_train_epochs=2,  # total number of training epochs
             per_device_train_batch_size=1,  # batch size per device during training, can increase if memory allows
             per_device_eval_batch_size=1,  # batch size for evaluation, can increase if memory allows
             save_steps=5,  # number of updates steps before checkpoint saves
@@ -89,7 +90,7 @@ def prepare_fine_tuning(model_name, tokenizer, train_dataset, val_dataset, freez
     else:
         training_args = TrainingArguments(
             output_dir=output_dir,  # output directory
-            num_train_epochs=1,  # total number of training epochs
+            num_train_epochs=2,  # total number of training epochs
             per_device_train_batch_size=1,  # batch size per device during training, can increase if memory allows
             save_steps=5,  # number of updates steps before checkpoint saves
             save_total_limit=5,  # limit the total amount of checkpoints and deletes the older checkpoints
@@ -108,6 +109,59 @@ def prepare_fine_tuning(model_name, tokenizer, train_dataset, val_dataset, freez
 
     return trainer
 
+def calculate_rouge(hypothesis, reference):
+    """
+    Calculate ROUGE scores
+    """
+    rouge = Rouge()
+    scores = rouge.get_scores(hypothesis, reference, avg=True)
+    return scores
+
+def evaluate_model(trainer, test_dataset, tokenizer):
+    """
+    Evaluate the fine-tuned model on the test dataset and print ROUGE scores
+    """
+    model = trainer.model
+    test_dataloader = trainer.get_test_dataloader(test_dataset)
+    rouge_scores = {'rouge-1': {'r': 0.0, 'p': 0.0, 'f': 0.0}, 'rouge-2': {'r': 0.0, 'p': 0.0, 'f': 0.0},
+                    'rouge-l': {'r': 0.0, 'p': 0.0, 'f': 0.0}}
+
+    for batch in test_dataloader:
+        inputs = tokenizer.batch_decode(batch['input_ids'], skip_special_tokens=True)
+        targets = tokenizer.batch_decode(batch['labels'], skip_special_tokens=True)
+        predictions = model.generate(batch['input_ids'])
+
+        for pred, target in zip(predictions, targets):
+            pred_text = tokenizer.decode(pred, skip_special_tokens=True)
+            rouge_batch_scores = calculate_rouge(pred_text, target)
+
+            # Accumulate ROUGE scores
+            for rouge_key, rouge_score in rouge_batch_scores.items():
+                rouge_scores[rouge_key]['r'] += rouge_score['r'] #Recall
+                rouge_scores[rouge_key]['p'] += rouge_score['p'] #Precision
+                rouge_scores[rouge_key]['f'] += rouge_score['f'] #F1-Score
+
+
+    # Normalize ROUGE scores
+    num_samples = len(test_dataset)
+    for rouge_key in rouge_scores.keys():
+        rouge_scores[rouge_key]['r'] /= num_samples
+        rouge_scores[rouge_key]['p'] /= num_samples
+        rouge_scores[rouge_key]['f'] /= num_samples
+
+
+    # Print ROUGE scores
+    print("ROUGE Scores:")
+    print("ROUGE-1 (Recall):", rouge_scores['rouge-1']['r'])
+    print("ROUGE-2 (Recall):", rouge_scores['rouge-2']['r'])
+    print("ROUGE-L (Recall):", rouge_scores['rouge-l']['r'])
+    print("ROUGE-1 (Precision):", rouge_scores['rouge-1']['p'])
+    print("ROUGE-2 (Precision):", rouge_scores['rouge-2']['p'])
+    print("ROUGE-L (Precision):", rouge_scores['rouge-l']['p'])
+    print("ROUGE-1 (F1-Score):", rouge_scores['rouge-1']['f'])
+    print("ROUGE-2 (F1-Score):", rouge_scores['rouge-2']['f'])
+    print("ROUGE-L (F1-Score):", rouge_scores['rouge-l']['f'])
+
 
 if __name__ == '__main__':
     # Use first 1000 docs as training data
@@ -116,8 +170,8 @@ if __name__ == '__main__':
     show_samples(dataset)
     dataset = dataset.filter(lambda x: x["Summary"] is not None) #Remove rows which have no summary
     train_texts, train_labels = dataset['train']['Text'][:1000], dataset['train']['Summary'][:1000]
-    val_texts, val_labels = dataset['train']['Text'][1000:1500], dataset['train']['Summary'][1000:1500]
-    test_texts, test_labels = dataset['test']['Text'], dataset['test']['Summary']
+    val_texts, val_labels = dataset['train']['Text'][1000:1250], dataset['train']['Summary'][1000:1250]
+    test_texts, test_labels = dataset['train']['Text'][1250:1500], dataset['train']['Summary'][1250:1500]
 
     # use Pegasus model as base for fine-tuning
     model_name = 'nsi319/legal-pegasus'
@@ -125,4 +179,7 @@ if __name__ == '__main__':
     trainer = prepare_fine_tuning(model_name, tokenizer, train_dataset, val_dataset)
     trainer.train()
 
-    trainer.save_model('pegasus_model')
+    trainer.save_model('pegasus_indian_legal')
+
+    # Evaluate the model on the test dataset
+    evaluate_model(trainer, test_dataset, tokenizer)
