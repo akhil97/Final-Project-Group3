@@ -52,7 +52,7 @@ def prepare_data(model_name,
 
 
 def prepare_fine_tuning(model_name, tokenizer, train_dataset, val_dataset, freeze_encoder=True,
-                        output_dir='./results'):
+                        output_dir='./pegasus_indian_legal'):
     """
     Prepare configurations and base model for fine-tuning
     """
@@ -66,7 +66,7 @@ def prepare_fine_tuning(model_name, tokenizer, train_dataset, val_dataset, freez
     if val_dataset is not None:
         training_args = TrainingArguments(
             output_dir=output_dir,  # output directory
-            num_train_epochs=2,  # total number of training epochs
+            num_train_epochs=5,  # total number of training epochs
             per_device_train_batch_size=1,  # batch size per device during training, can increase if memory allows
             per_device_eval_batch_size=1,  # batch size for evaluation, can increase if memory allows
             save_steps=5,  # number of updates steps before checkpoint saves
@@ -90,7 +90,7 @@ def prepare_fine_tuning(model_name, tokenizer, train_dataset, val_dataset, freez
     else:
         training_args = TrainingArguments(
             output_dir=output_dir,  # output directory
-            num_train_epochs=2,  # total number of training epochs
+            num_train_epochs=5,  # total number of training epochs
             per_device_train_batch_size=1,  # batch size per device during training, can increase if memory allows
             save_steps=5,  # number of updates steps before checkpoint saves
             save_total_limit=5,  # limit the total amount of checkpoints and deletes the older checkpoints
@@ -124,7 +124,7 @@ def evaluate_model(trainer, test_dataset, tokenizer):
     model = trainer.model
     test_dataloader = trainer.get_test_dataloader(test_dataset)
     rouge_scores = {'rouge-1': {'r': 0.0, 'p': 0.0, 'f': 0.0}, 'rouge-2': {'r': 0.0, 'p': 0.0, 'f': 0.0},
-                    'rouge-l': {'r': 0.0, 'p': 0.0, 'f': 0.0}}
+                    'rouge-l': {'r': 0.0, 'p': 0.0, 'f': 0.0}} #r-recall, p-precision, f-f1 score
 
     for batch in test_dataloader:
         inputs = tokenizer.batch_decode(batch['input_ids'], skip_special_tokens=True)
@@ -179,6 +179,10 @@ if __name__ == '__main__':
     trainer = prepare_fine_tuning(model_name, tokenizer, train_dataset, val_dataset)
     trainer.train()
 
+    #Push model to hugging face hub
+    trainer.push_to_hub()
+
+    # Save model locally
     trainer.save_model('pegasus_indian_legal')
 
     # Evaluate the model on the test dataset
