@@ -56,14 +56,12 @@ def main():
         entities = utils.process_text_from_file(cleaned_text)
         for label, entities_list in entities.items():
             st.write(f"<span style='font-weight: bold; color: #001f3f;font-size: 1.0em;'>{label}:</span> {', '.join(entities_list)}",unsafe_allow_html=True)
+    elif model_name == "InlegaltunedBERT":
+        probabilities,predicted_class = utils.inlegal_tune_bert_judgment(cleaned_text)
 
-
-    elif model_name == "CustomInLegalBERT":
-
-        probabilities, predicted_class = utils.custom_bert_judgment(cleaned_text)
         prediction_label = "Accepted" if predicted_class == 1 else "Rejected"
 
-        st.markdown("<h1 style='font-size: 2.0em; color: #000000; font-weight: bold;'>Prediction of Legal Judgement:</h1>",unsafe_allow_html=True)
+        st.markdown( "<h1 style='font-size: 2.0em; color: #000000; font-weight: bold;'>Prediction of Legal Judgement:</h1>",unsafe_allow_html=True)
         st.write(f"<span style='font-weight: bold; color: #001f3f;font-size: 1.5em;'>Predicted Class:</span> {prediction_label}",unsafe_allow_html=True)
 
         # Display prediction and confidence chart with custom colors
@@ -74,8 +72,6 @@ def main():
         entities = utils.process_text_from_file(cleaned_text)
         for label, entities_list in entities.items():
             st.write(f"<span style='font-weight: bold; color: #001f3f;font-size: 1.0em;'>{label}:</span> {', '.join(entities_list)}",unsafe_allow_html=True)
-
-
 
 
 if __name__ == "__main__":

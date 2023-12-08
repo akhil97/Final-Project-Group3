@@ -26,24 +26,8 @@ def remove_urls(text):
     combined_pattern = re.compile('|'.join([url_pattern.pattern] + [re.escape(word) for word in words_to_remove]),
                                   flags=re.IGNORECASE)
     # Use the sub method to replace all matches with an empty string
-    cleaned_text = re.sub(combined_pattern, '', text)
-    cleaned_text = re.sub(r'\d+', '', cleaned_text)
-    cleaned_text = re.sub(r'[^a-zA-Z0-9.,)\-(/?\t ]', '', cleaned_text)
-    cleaned_text = re.sub(r'[^a-zA-Z0-9.,)\-(/?\t ]', '',
-                          cleaned_text)  # removing everything other than these a-zA-Z0-9.,)\-(/?\t
-    cleaned_text = re.sub(r'(?<=[^0-9])/(?=[^0-9])', ' ', cleaned_text)
-    cleaned_text = re.sub("\t+", " ", cleaned_text)  # converting multiple tabs and spaces ito a single tab or space
-    cleaned_text = re.sub(" +", " ", cleaned_text)
-    cleaned_text = re.sub("\.\.+", "", cleaned_text)  # these were the commmon noises in out data, depends on data
-    cleaned_text = re.sub("\A ?", "", cleaned_text)
+    processed_text = re.sub(combined_pattern, '', text)
 
-    # dividing into para wrt to roman points
-    cleaned_text = re.sub(r"[()[\]\"$']", " ", cleaned_text)  # removing ()[\]\"$' these characters
-    cleaned_text = re.sub(r" no.", " number",
-                          cleaned_text)  # converting no., nos., co., ltd.  to number, numbers, company and limited
-    cleaned_text = re.sub(r" nos.", " numbers", cleaned_text)
-    cleaned_text = re.sub(r" co.", " company", cleaned_text)
-    processed_text = re.sub(r" ltd.", " limited", cleaned_text)
 
     return processed_text
 #___________________________________________________________
@@ -70,7 +54,7 @@ def sidebar():
     with st.sidebar:
         genre = st.radio(
             "Choose your model",
-            ["InLegalBERT","CustomInLegalBERT"],
+            ["InLegalBERT","InlegaltunedBERT"],
             index=None
         )
         return genre
@@ -79,31 +63,6 @@ def sidebar():
 #___________________________________________________________
 
 def inlegal_bert_judgment(text):
-    seed_value = 42
-    torch.manual_seed(seed_value)
-    torch.cuda.manual_seed(seed_value)
-    # Load tokenizer and model
-    tokenizer = AutoTokenizer.from_pretrained("law-ai/InLegalBERT")
-    model = AutoModelForSequenceClassification.from_pretrained("law-ai/InLegalBERT")
-
-    inputs = tokenizer(text[-512:], return_tensors="pt")
-
-    with torch.no_grad():
-        torch.manual_seed(seed_value)
-        torch.cuda.manual_seed(seed_value)
-        outputs = model(**inputs)
-
-    logits = outputs.logits
-    # Apply softmax to obtain class probabilities
-    probabilities = torch.nn.functional.softmax(logits, dim=1)
-    # Get the predicted class label
-    predicted_class = torch.argmax(probabilities, dim=1).item()
-
-    return probabilities,predicted_class
-
-
-
-def  custom_bert_judgment(text):
     seed_value = 42
     torch.manual_seed(seed_value)
     torch.cuda.manual_seed(seed_value)
@@ -124,7 +83,34 @@ def  custom_bert_judgment(text):
     # Get the predicted class label
     predicted_class = torch.argmax(probabilities, dim=1).item()
 
-    return probabilities, predicted_class
+    return probabilities,predicted_class
+
+def inlegal_tune_bert_judgment(text):
+    seed_value = 42
+    torch.manual_seed(seed_value)
+    torch.cuda.manual_seed(seed_value)
+    # Load tokenizer and model
+    tokenizer = AutoTokenizer.from_pretrained("/Users/brundamariswamy/Desktop/Sentiment/Inlegal_models")
+    model = AutoModelForSequenceClassification.from_pretrained("/Users/brundamariswamy/Desktop/Sentiment/Inlegal_models")
+
+    inputs = tokenizer(text[-512:], return_tensors="pt")
+
+    with torch.no_grad():
+        torch.manual_seed(seed_value)
+        torch.cuda.manual_seed(seed_value)
+        outputs = model(**inputs)
+
+    logits = outputs.logits
+    # Apply softmax to obtain class probabilities
+    probabilities = torch.nn.functional.softmax(logits, dim=1)
+    # Get the predicted class label
+    predicted_class = torch.argmax(probabilities, dim=1).item()
+
+    return probabilities,predicted_class
+
+
+
+
 # ------------------
 import spacy
 
@@ -147,6 +133,12 @@ def process_text_from_file(text):
     for ent in doc.ents:
         if ent.label_ not in entity_dict:
             entity_dict[ent.label_] = set()
-        entity_dict[ent.label_].add(ent.text)
+        # Lowercase the entity to make it case-insensitive
+        entity = ent.text.lower()
+        entity_dict[ent.label_].add(entity)
+
+        # Remove duplicate entities within each category
+    for label, entities in entity_dict.items():
+        entity_dict[label] = list(entities)
 
     return entity_dict
