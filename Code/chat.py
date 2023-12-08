@@ -13,7 +13,7 @@ def chat():
     selected_model = st.sidebar.selectbox("Select Model", list(model_options.keys()), key="legal_assist_model_select")
 
     model_identifier = model_options[selected_model]
-    text_gen_pipeline = pipeline("text-generation", model='gpt', max_length=1000, do_sample=True, top_k=50, top_p=0.95, temperature=0.9, num_return_sequences=1)
+    text_gen_pipeline = pipeline("text-generation", max_length=1000, do_sample=True, top_k=50, top_p=0.95, temperature=0.9, num_return_sequences=1)
 
     if "messages" not in st.session_state:
         st.session_state.messages = []
