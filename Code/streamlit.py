@@ -10,11 +10,9 @@ import random
 import torch
 import os
 from huggingface_hub import hf_hub_download
+from transformers import AutoTokenizer, AutoModelForSeq2SeqLM
 import joblib
 import chat
-import re
-import spacy
-from transformers import AutoTokenizer,AutoModelForSequenceClassification
 
 REPO_ID = "pile-of-law/legalbert-large-1.7M-2"
 
@@ -39,85 +37,44 @@ for file in files_to_download:
         f.write(open(download_path, 'rb').read())
 
 
-def extract_text_from_document():
-    pass
+def extract_text_from_document(file):
+    if file is not None:
+        # Read the content of the file as bytes
+        content_bytes = file.read()
 
-def generate_response_with_selected_model(prompt, model):
-    pass
+        if content_bytes:
+            # Decode the bytes into a string
+            content = content_bytes.decode('utf-8')
+            return content
+        else:
+            st.error("File is empty. Please choose a file with content.")
+            return None
+    else:
+        return None
+
+
+def generate_response_with_selected_model(model, tokenizer, input_tokenized):
+    summary_ids = model.generate(input_tokenized,
+                                 num_beams=9,
+                                 no_repeat_ngram_size=3,
+                                 length_penalty=2.0,
+                                 min_length=150,
+                                 max_length=250,
+                                 early_stopping=True)
+    summary = [tokenizer.decode(g, skip_special_tokens=True, clean_up_tokenization_spaces=False) for g in summary_ids][
+        0]
+    return summary
 
 
 summary = "This is a summary of the document."
 
-#________________________________________________*Classification code begins*__________________________________________
-def remove_urls(text):
-    # Define a regular expression pattern for matching URLs
-    url_pattern = re.compile(r'https?://\S+|www\.\S+')
-    words_to_remove = ['Indian Kanoon']
-    combined_pattern = re.compile('|'.join([url_pattern.pattern] + [re.escape(word) for word in words_to_remove]),
-                                  flags=re.IGNORECASE)
-    # Use the sub method to replace all matches with an empty string
-    processed_text = re.sub(combined_pattern, '', text)
-    return processed_text
 
-
-def predict_legal_judgment(text, model_name):
-    seed_value = 42
-    torch.manual_seed(seed_value)
-    torch.cuda.manual_seed(seed_value)
-
-    # Load tokenizer and model based on the provided model name
-    if model_name == "Indian-Legal-Bert":
-        tokenizer = AutoTokenizer.from_pretrained("law-ai/CustomInLawBERT")
-        model = AutoModelForSequenceClassification.from_pretrained("law-ai/CustomInLawBERT")
-    elif model_name == "Indian-Custom-Bert":
-        tokenizer = AutoTokenizer.from_pretrained("")
-        model = AutoModelForSequenceClassification.from_pretrained("")
-    else:
-        raise ValueError("Invalid model name")
-
-    inputs = tokenizer(text[-512:], return_tensors="pt")
-
-    with torch.no_grad():
-        torch.manual_seed(seed_value)
-        torch.cuda.manual_seed(seed_value)
-        outputs = model(**inputs)
-
-    logits = outputs.logits
-    # Apply softmax to obtain class probabilities
-    probabilities = torch.nn.functional.softmax(logits, dim=1)
-    # Get the predicted class label
-    predicted_class = torch.argmax(probabilities, dim=1).item()
-
-    return probabilities, predicted_class
-
-# Load the spaCy model
-nlp = spacy.load("en_legal_ner_trf")
-# Function to process text from a file
-def process_text_from_file(text):
-    # Read text from the file
-    doc = nlp(text)
-    # Create a dictionary to store entities by their names
-    entity_dict = {}
-    # Extract and store entities by their names
-    for ent in doc.ents:
-        if ent.label_ not in entity_dict:
-            entity_dict[ent.label_] = set()
-        # Lowercase the entity to make it case-insensitive
-        entity = ent.text.lower()
-        entity_dict[ent.label_].add(entity)
-
-        # Remove duplicate entities within each category
-    for label, entities in entity_dict.items():
-        entity_dict[label] = list(entities)
-
-    return entity_dict
-#___________________________________________________________*Classification code ends*________________________________________________________
 def main():
-    
     inject_custom_css()
 
-    st.warning("This application is exclusively created for illustration and demonstration purposes. Please refrain from depending solely on the information furnished by the model.")
-        
+    st.warning(
+        "This application is exclusively created for illustration and demonstration purposes. Please refrain from depending solely on the information furnished by the model.")
+
     tab1, tab2, tab3 = st.tabs(["Sum It Up!", "Classify This", "Say Hello!"])
 
     with tab1:
@@ -129,10 +86,8 @@ def main():
         st.write("2. Choose a summarization model.")
         st.write("3. Wait for the app to process the document.")
         st.write("4. View the summarized key points and clauses.")
-        model_choice = st.sidebar.selectbox("Choose a Model",
-                                            ["BERT", "GPT-3", "XLNet", "GPT-3 Legal", "BERT Legal", "Legal Transformer",
-                                             "BERT", "RoBERTa", "Legal-BERT", "Indian-Legal-Bert",
-                                             "Indian-Custom-Bert"])
+
+        model_choice = st.sidebar.selectbox("Choose a Model", ["Pegasus Legal", "Pegasus Indian Legal"])
 
         uploaded_file = st.file_uploader("Upload a legal document", type=["pdf", "docx", "txt"])
         if uploaded_file is not None:
@@ -140,16 +95,23 @@ def main():
             document_text = extract_text_from_document(uploaded_file)
 
             if document_text:
-                if model_choice == "BERT":
+                if model_choice == "Pegasus Legal":
                     # summary = bert_summarize(document_text)
-                    summary = summary
-                elif model_choice == "GPT-3":
-                    summary = summary
-                elif model_choice == "XLNet":
-                    summary = summary
+                    tokenizer = AutoTokenizer.from_pretrained("nsi319/legal-pegasus")
+                    model = AutoModelForSeq2SeqLM.from_pretrained("nsi319/legal-pegasus")
+                    input_tokenized = tokenizer.encode(document_text, return_tensors='pt', max_length=1024,
+                                                       truncation=True)
+                    summary = generate_response_with_selected_model(model, tokenizer, input_tokenized)
+                elif model_choice == "Pegasus Indian Legal":
+                    tokenizer = AutoTokenizer.from_pretrained("akhilm97/pegasus_indian_legal")
+                    model = AutoModelForSeq2SeqLM.from_pretrained("akhilm97/pegasus_indian_legal")
+                    input_tokenized = tokenizer.encode(document_text, return_tensors='pt', max_length=1024,
+                                                       truncation=True)
+                    summary = generate_response_with_selected_model(model, tokenizer, input_tokenized)
                 else:
-                    st.write("Please choose an appropriate model from one of the following options - BERT, GPT-3, or XLNet.")
-                    
+                    st.write(
+                        "Please choose an appropriate model from one of the following options - BERT, GPT-3, or XLNet.")
+
                 st.write("## Summary")
                 st.write("Here's the summarized content of your document:")
                 st.write(summary)
@@ -157,48 +119,43 @@ def main():
                 st.write("Unable to process the document. Please try again with a different file format.")
 
     with tab2:
-        st.title("Legal Case Judgement  Prediction and Extracting  Legal Named Entities")
+        st.title("Legal Document Classifier and Predictor")
         st.write("## Description")
-        st.write("This advanced tool is designed to Predict Legal Judgements and Extract Legal Named Entities based on the provided content. It's useful for legal professionals who need quick insights to legal outcomes and the entities present in the case document.")
+        st.write(
+            "This advanced tool is designed to classify legal documents into specific categories and predict outcomes based on their content. It's useful for legal professionals who need quick insights into a document's nature and potential legal outcomes.")
         st.write("## How It Works")
-        st.write("1. **Upload a Legal Document:** Begin by uploading a document. Accepted formats include PDF, DOCX, and TXT.")
+        st.write(
+            "1. **Upload a Legal Document:** Begin by uploading a document. Accepted formats include PDF, DOCX, and TXT.")
         st.write("2. **Choose Your Model:** Select from a range of AI models optimized for legal text analysis.")
-        st.write("3. **Document Analysis:** The tool will Predict whether the appeals/claims filed by the appellant against the respondent is Accepted /Rejected and extract its Legal Named Entities from the document uploaded")
-        st.write("4. **Outcome Prediction:** Based on the analysis, it will also predict potential outcomes or implications.")
+        st.write(
+            "3. **Document Analysis:** The tool will classify the document into categories such as 'Contract', 'Court Judgment', 'Patent', and more.")
+        st.write(
+            "4. **Outcome Prediction:** Based on the analysis, it will also predict potential outcomes or implications.")
 
         uploaded_file = st.file_uploader("Upload Document", type=["pdf", "docx", "txt"])
         if uploaded_file is not None:
-            content_bytes = uploaded_file.read()
-            if content_bytes:
-                # Decode the bytes into a string
-                content = content_bytes.decode('utf-8')
-                # Remove URLs from the text
-                cleaned_text = remove_urls(content)
-                words = cleaned_text.split()[-200:]
-                st.write("Display last few lines from uploaded Legal case document:")
-                st.write(' '.join(words))
+            st.write("Analyzing Document...")
+            document_content = extract_text_from_document(uploaded_file)
 
-                if model_choice in ["Indian-Legal-Bert", "Indian-Custom-Bert"]:
-                    # Define the model name based on the user's choice
-                    model_name = "Indian-Legal-Bert" if model_choice == "Indian-Legal-Bert" else "Indian-Custom-Bert"
-                    # Get predictions and entities
-                    probabilities, predicted_class = predict_legal_judgment(cleaned_text, model_name=model_name)
-                    prediction_label = "Accepted" if predicted_class == 1 else "Rejected"
-                    # Display results
-                    st.write("## Analysis Results")
-                    st.write(f"<span style='font-weight: bold; color: #001f3f;font-size: 1.8em;'>Legal Case Judgement:</span> {prediction_label}",unsafe_allow_html=True)
-                    st.write("Prediction Confidence Bar Chart:")
-                    st.bar_chart(probabilities[0].numpy(), use_container_width=True)
-
-                    st.write("### Extracting Legal Named Entities:")
-                    entities = process_text_from_file(cleaned_text)
-                    for label, entities_list in entities.items():
-                        st.write(f"<span style='font-weight: bold; color: #001f3f;font-size: 1.0em;'>{label}:</span> {', '.join(entities_list)}",unsafe_allow_html=True)
+            if document_content:
+                if model_choice == "BERT":
+                    # classification_result, prediction = bert_analyze(document_content)
+                    classification_result, prediction = "Contract", "Breach of Contract"
+                elif model_choice == "RoBERTa":
+                    # classification_result, prediction = roberta_analyze(document_content)
+                    classification_result, prediction = "Contract", "Breach of Contract"
+                elif model_choice == "Legal-BERT":
+                    # classification_result, prediction = legal_bert_analyze(document_content)
+                    classification_result, prediction = "Contract", "Breach of Contract"
                 else:
-                    st.write("Please choose an appropriate model from one of the following options - BERT, RoBERTa, or Legal-BERT.")
+                    st.write(
+                        "Please choose an appropriate model from one of the following options - BERT, RoBERTa, or Legal-BERT.")
+
+                st.write("## Analysis Results")
+                st.write("**Document Classification:**", classification_result)
+                st.write("**Predicted Outcome:**", prediction)
             else:
                 st.error("Unable to process the document. Please try a different format.")
-
 
     with tab3:
         st.write("## Connect with Us")
@@ -211,7 +168,8 @@ def main():
 
         st.write("### Socials")
 
-        st.markdown('<link rel="stylesheet" href="https://use.fontawesome.com/releases/v5.8.1/css/all.css">', unsafe_allow_html=True)
+        st.markdown('<link rel="stylesheet" href="https://use.fontawesome.com/releases/v5.8.1/css/all.css">',
+                    unsafe_allow_html=True)
 
         linkedin_icon = "<i class='fab fa-linkedin'></i>"
         github_icon = "<i class='fab fa-github'></i>"
@@ -219,17 +177,20 @@ def main():
         col1, col2, col3 = st.columns(3)
         with col1:
             st.markdown("#### Akhil Bharadwaj")
-            st.markdown(f"{linkedin_icon} [LinkedIn](https://www.linkedin.com/in/akhil-bharadwaj-mab97/)", unsafe_allow_html=True)
+            st.markdown(f"{linkedin_icon} [LinkedIn](https://www.linkedin.com/in/akhil-bharadwaj-mab97/)",
+                        unsafe_allow_html=True)
             st.markdown(f"{github_icon} [GitHub](https://github.com/akhil97)", unsafe_allow_html=True)
         with col2:
             st.markdown("#### Brunda Mariswamy")
-            st.markdown(f"{linkedin_icon} [LinkedIn](https://www.linkedin.com/in/brunda-mariswamy/)", unsafe_allow_html=True)
+            st.markdown(f"{linkedin_icon} [LinkedIn](https://www.linkedin.com/in/brunda-mariswamy/)",
+                        unsafe_allow_html=True)
             st.markdown(f"{github_icon} [GitHub](https://github.com/bmariswamy5/)", unsafe_allow_html=True)
         with col3:
             st.markdown("#### Chirag Lakhanpal")
-            st.markdown(f"{linkedin_icon} [LinkedIn](https://www.linkedin.com/in/chiraglakhanpal/)", unsafe_allow_html=True)
+            st.markdown(f"{linkedin_icon} [LinkedIn](https://www.linkedin.com/in/chiraglakhanpal/)",
+                        unsafe_allow_html=True)
             st.markdown(f"{github_icon} [GitHub](https://github.com/ChiragLakhanpal)", unsafe_allow_html=True)
-    
+
 
 def inject_custom_css():
     custom_css = """
@@ -280,11 +241,12 @@ def inject_custom_css():
                 color: #0E1117 !important; 
                 font-weight: bold !important; 
             }
-               
+
         </style>    
     """
     st.markdown(custom_css, unsafe_allow_html=True)
-    
+
+
 if __name__ == "__main__":
 
     st.sidebar.title("Navigation")
