@@ -1,447 +1,115 @@
-from datasets import load_dataset
-configurations = ['abercrombie', 'canada_tax_court_outcomes', 'citation_prediction_classification', 'citation_prediction_open', 'consumer_contracts_qa', 'contract_nli_confidentiality_of_agreement', 'contract_nli_explicit_identification', 'contract_nli_inclusion_of_verbally_conveyed_information', 'contract_nli_limited_use', 'contract_nli_no_licensing', 'contract_nli_notice_on_compelled_disclosure', 'contract_nli_permissible_acquirement_of_similar_information', 'contract_nli_permissible_copy', 'contract_nli_permissible_development_of_similar_information', 'contract_nli_permissible_post-agreement_possession', 'contract_nli_return_of_confidential_information', 'contract_nli_sharing_with_employees', 'contract_nli_sharing_with_third-parties', 'contract_nli_survival_of_obligations', 'contract_qa', 'corporate_lobbying', 'cuad_affiliate_license-licensee', 'cuad_affiliate_license-licensor', 'cuad_anti-assignment', 'cuad_audit_rights', 'cuad_cap_on_liability', 'cuad_change_of_control', 'cuad_competitive_restriction_exception', 'cuad_covenant_not_to_sue', 'cuad_effective_date', 'cuad_exclusivity', 'cuad_expiration_date', 'cuad_governing_law', 'cuad_insurance', 'cuad_ip_ownership_assignment', 'cuad_irrevocable_or_perpetual_license', 'cuad_joint_ip_ownership', 'cuad_license_grant', 'cuad_liquidated_damages', 'cuad_minimum_commitment', 'cuad_most_favored_nation', 'cuad_no-solicit_of_customers', 'cuad_no-solicit_of_employees', 'cuad_non-compete', 'cuad_non-disparagement', 'cuad_non-transferable_license', 'cuad_notice_period_to_terminate_renewal', 'cuad_post-termination_services', 'cuad_price_restrictions', 'cuad_renewal_term', 'cuad_revenue-profit_sharing', 'cuad_rofr-rofo-rofn', 'cuad_source_code_escrow', 'cuad_termination_for_convenience', 'cuad_third_party_beneficiary', 'cuad_uncapped_liability', 'cuad_unlimited-all-you-can-eat-license', 'cuad_volume_restriction', 'cuad_warranty_duration', 'definition_classification', 'definition_extraction', 'diversity_1', 'diversity_2', 'diversity_3', 'diversity_4', 'diversity_5', 'diversity_6', 'function_of_decision_section', 'hearsay', 'insurance_policy_interpretation', 'international_citizenship_questions', 'jcrew_blocker', 'learned_hands_benefits', 'learned_hands_business', 'learned_hands_consumer', 'learned_hands_courts', 'learned_hands_crime', 'learned_hands_divorce', 'learned_hands_domestic_violence', 'learned_hands_education', 'learned_hands_employment', 'learned_hands_estates', 'learned_hands_family', 'learned_hands_health', 'learned_hands_housing', 'learned_hands_immigration', 'learned_hands_torts', 'learned_hands_traffic', 'legal_reasoning_causality', 'maud_ability_to_consummate_concept_is_subject_to_mae_carveouts', 'maud_accuracy_of_fundamental_target_rws_bringdown_standard', 'maud_accuracy_of_target_capitalization_rw_(outstanding_shares)_bringdown_standard_answer', 'maud_accuracy_of_target_general_rw_bringdown_timing_answer', 'maud_additional_matching_rights_period_for_modifications_(cor)', 'maud_application_of_buyer_consent_requirement_(negative_interim_covenant)', 'maud_buyer_consent_requirement_(ordinary_course)', 'maud_change_in_law__subject_to_disproportionate_impact_modifier', 'maud_changes_in_gaap_or_other_accounting_principles__subject_to_disproportionate_impact_modifier', 'maud_cor_permitted_in_response_to_intervening_event', 'maud_cor_permitted_with_board_fiduciary_determination_only', 'maud_cor_standard_(intervening_event)', 'maud_cor_standard_(superior_offer)', 'maud_definition_contains_knowledge_requirement_-_answer', 'maud_definition_includes_asset_deals', 'maud_definition_includes_stock_deals', 'maud_fiduciary_exception__board_determination_standard', 'maud_fiduciary_exception_board_determination_trigger_(no_shop)', 'maud_financial_point_of_view_is_the_sole_consideration', 'maud_fls_(mae)_standard', 'maud_general_economic_and_financial_conditions_subject_to_disproportionate_impact_modifier', 'maud_includes_consistent_with_past_practice', 'maud_initial_matching_rights_period_(cor)', 'maud_initial_matching_rights_period_(ftr)', 'maud_intervening_event_-_required_to_occur_after_signing_-_answer', 'maud_knowledge_definition', 'maud_liability_standard_for_no-shop_breach_by_target_non-do_representatives', 'maud_ordinary_course_efforts_standard', 'maud_pandemic_or_other_public_health_event__subject_to_disproportionate_impact_modifier', 'maud_pandemic_or_other_public_health_event_specific_reference_to_pandemic-related_governmental_responses_or_measures', 'maud_relational_language_(mae)_applies_to', 'maud_specific_performance', 'maud_tail_period_length', 'maud_type_of_consideration', 'nys_judicial_ethics', 'opp115_data_retention', 'opp115_data_security', 'opp115_do_not_track', 'opp115_first_party_collection_use', 'opp115_international_and_specific_audiences', 'opp115_policy_change', 'opp115_third_party_sharing_collection', 'opp115_user_access,_edit_and_deletion', 'opp115_user_choice_control', 'oral_argument_question_purpose', 'overruling', 'personal_jurisdiction', 'privacy_policy_entailment', 'privacy_policy_qa', 'proa', 'rule_qa', 'sara_entailment', 'sara_numeric', 'scalr', 'ssla_company_defendants', 'ssla_individual_defendants', 'ssla_plaintiff', 'successor_liability', 'supply_chain_disclosure_best_practice_accountability', 'supply_chain_disclosure_best_practice_audits', 'supply_chain_disclosure_best_practice_certification', 'supply_chain_disclosure_best_practice_training', 'supply_chain_disclosure_best_practice_verification', 'supply_chain_disclosure_disclosed_accountability', 'supply_chain_disclosure_disclosed_audits', 'supply_chain_disclosure_disclosed_certification', 'supply_chain_disclosure_disclosed_training', 'supply_chain_disclosure_disclosed_verification', 'telemarketing_sales_rule', 'textualism_tool_dictionaries', 'textualism_tool_plain', 'ucc_v_common_law', 'unfair_tos']
-datasets = {}
-for config in configurations:
-    datasets[config] = load_dataset("nguha/legalbench", config)
-    
-    
-from transformers import AutoTokenizer
-
-model_checkpoint = "deepset/roberta-base-squad2"
-tokenizer = AutoTokenizer.from_pretrained(model_checkpoint)
-
-tokenizer.is_fast
-
-max_length = 384
-stride = 128
-
-
+import os
+from transformers import DistilBertTokenizer, DistilBertForMaskedLM, GPT2Tokenizer, GPT2LMHeadModel, Trainer, TrainingArguments
+from transformers import TextDataset, DataCollatorForLanguageModeling
+from datasets import load_dataset, concatenate_datasets, Dataset
+import numpy as np
+from sklearn.metrics import accuracy_score, precision_recall_fscore_support
+import tempfile
 import pandas as pd
-train_dataset=datasets['consumer_contracts_qa']['train']
-validation_dataset=datasets['consumer_contracts_qa']['test']
+import torch
 
+def prepare_dataset(dataset_name, subsets, split, tokenizer, block_size=256):
+    all_datasets = []
 
-train_dataset = train_dataset.map(
-    preprocess_training_examples,
-    batched=True,
-    remove_columns=train_dataset.column_names,
-)
+    for subset in subsets:
+        dataset = load_dataset(dataset_name, subset, split=split)
 
-validation_dataset = validation_dataset.map(
-    preprocess_validation_examples,
-    batched=True,
-    remove_columns=validation_dataset.column_names,
-)
+        if tokenizer.pad_token is None:    
+            tokenizer.pad_token = tokenizer.eos_token if tokenizer.eos_token is not None else '[PAD]'
 
-def preprocess_validation_examples(examples):
-    questions = [q.strip() for q in examples["question"]]
-    inputs = tokenizer(
-        questions,
-        examples["context"],
-        max_length=max_length,
-        truncation="only_second",
-        stride=stride,
-        return_overflowing_tokens=True,
-        return_offsets_mapping=True,
-        padding="max_length",
+        # Prepare data for tokenization
+        texts = [" ".join([str(item['question']), str(item['answer'])]) for item in dataset if 'question' in item and 'answer' in item]
+        if not texts:
+            continue          
+        tokenized_texts = tokenizer(texts, truncation=True, padding='max_length', max_length=block_size, return_tensors="pt")
+
+        # Convert tokenized data to a Pandas DataFrame
+        df = pd.DataFrame({key: val.tolist() for key, val in tokenized_texts.items()})
+        processed_dataset = Dataset.from_pandas(df)
+        all_datasets.append(processed_dataset)
+        print(f"Dataset {subset} has {len(processed_dataset)} samples.")
+    return concatenate_datasets(all_datasets)
+
+def load_data_collator(tokenizer, mlm=False):
+    return DataCollatorForLanguageModeling(tokenizer=tokenizer, mlm=mlm)
+
+from sklearn.metrics import accuracy_score, precision_recall_fscore_support
+
+def compute_metrics(eval_pred):
+    logits, labels = eval_pred
+    predictions = np.argmax(logits, axis=-1)
+
+    # Calculate accuracy
+    accuracy = accuracy_score(labels, predictions)
+
+    # Calculate precision, recall, and F1 score
+    precision, recall, f1, _ = precision_recall_fscore_support(labels, predictions, average='binary')
+
+    return {
+        'accuracy': accuracy,
+        'precision': precision,
+        'recall': recall,
+        'f1': f1
+    }
+
+def train_and_evaluate(dataset_name, subsets, model_name, output_dir, overwrite_output_dir,
+                       per_device_train_batch_size, num_train_epochs, save_steps, fp16):
+    tokenizer = DistilBertTokenizer.from_pretrained(model_name)
+    
+    train_dataset = prepare_dataset(dataset_name, subsets, 'train', tokenizer)
+    eval_dataset = prepare_dataset(dataset_name, subsets, 'test', tokenizer)
+
+    data_collator = load_data_collator(tokenizer)
+
+    tokenizer.save_pretrained(output_dir)
+    model = DistilBertForMaskedLM.from_pretrained(model_name)
+    model.to('cuda') 
+    model.save_pretrained(output_dir)
+
+    training_args = TrainingArguments(
+        output_dir=output_dir,
+        overwrite_output_dir=overwrite_output_dir,
+        per_device_train_batch_size=per_device_train_batch_size,
+        num_train_epochs=num_train_epochs,
+        save_steps=save_steps,
+        evaluation_strategy="epoch",  
+        logging_steps=1000,
+        fp16=True
     )
 
-    sample_map = inputs.pop("overflow_to_sample_mapping")
-    example_ids = []
+    # Clear CUDA cache periodically
+    torch.cuda.empty_cache()
+    trainer = Trainer(
+        model=model,
+        args=training_args,
+        data_collator=data_collator,
+        train_dataset=train_dataset,
+        eval_dataset=eval_dataset,
+        compute_metrics=compute_metrics
+    )
 
-    for i in range(len(inputs["input_ids"])):
-        sample_idx = sample_map[i]
-        example_ids.append(examples["id"][sample_idx])
+    trainer.train()
+    trainer.save_model()
+    trainer.evaluate()
 
-        sequence_ids = inputs.sequence_ids(i)
-        offset = inputs["offset_mapping"][i]
-        inputs["offset_mapping"][i] = [
-            o if sequence_ids[k] == 1 else None for k, o in enumerate(offset)
-        ]
+model_name = 'distilbert-base-uncased'
+output_dir = 'output'
+overwrite_output_dir = False
+per_device_train_batch_size = 1
+num_train_epochs = 50 
+save_steps = 5000
 
-    inputs["example_id"] = example_ids
-    return inputs
+subsets = ['abercrombie', 'canada_tax_court_outcomes', 'citation_prediction_classification', 'citation_prediction_open', 'consumer_contracts_qa', 'contract_nli_confidentiality_of_agreement', 'contract_nli_explicit_identification', 'contract_nli_inclusion_of_verbally_conveyed_information', 'contract_nli_limited_use', 'contract_nli_no_licensing', 'contract_nli_notice_on_compelled_disclosure', 'contract_nli_permissible_acquirement_of_similar_information', 'contract_nli_permissible_copy', 'contract_nli_permissible_development_of_similar_information', 'contract_nli_permissible_post-agreement_possession', 'contract_nli_return_of_confidential_information', 'contract_nli_sharing_with_employees', 'contract_nli_sharing_with_third-parties', 'contract_nli_survival_of_obligations', 'contract_qa', 'corporate_lobbying', 'cuad_affiliate_license-licensee', 'cuad_affiliate_license-licensor', 'cuad_anti-assignment', 'cuad_audit_rights', 'cuad_cap_on_liability', 'cuad_change_of_control', 'cuad_competitive_restriction_exception', 'cuad_covenant_not_to_sue', 'cuad_effective_date', 'cuad_exclusivity', 'cuad_expiration_date', 'cuad_governing_law', 'cuad_insurance', 'cuad_ip_ownership_assignment', 'cuad_irrevocable_or_perpetual_license', 'cuad_joint_ip_ownership', 'cuad_license_grant', 'cuad_liquidated_damages', 'cuad_minimum_commitment', 'cuad_most_favored_nation', 'cuad_no-solicit_of_customers', 'cuad_no-solicit_of_employees', 'cuad_non-compete', 'cuad_non-disparagement', 'cuad_non-transferable_license', 'cuad_notice_period_to_terminate_renewal', 'cuad_post-termination_services', 'cuad_price_restrictions', 'cuad_renewal_term', 'cuad_revenue-profit_sharing', 'cuad_rofr-rofo-rofn', 'cuad_source_code_escrow', 'cuad_termination_for_convenience', 'cuad_third_party_beneficiary', 'cuad_uncapped_liability', 'cuad_unlimited-all-you-can-eat-license', 'cuad_volume_restriction', 'cuad_warranty_duration', 'definition_classification', 'definition_extraction', 'diversity_1', 'diversity_2', 'diversity_3', 'diversity_4', 'diversity_5', 'diversity_6', 'function_of_decision_section', 'hearsay', 'insurance_policy_interpretation', 'international_citizenship_questions', 'jcrew_blocker', 'learned_hands_benefits', 'learned_hands_business', 'learned_hands_consumer', 'learned_hands_courts', 'learned_hands_crime', 'learned_hands_divorce', 'learned_hands_domestic_violence', 'learned_hands_education', 'learned_hands_employment', 'learned_hands_estates', 'learned_hands_family', 'learned_hands_health', 'learned_hands_housing', 'learned_hands_immigration', 'learned_hands_torts', 'learned_hands_traffic', 'legal_reasoning_causality', 'maud_ability_to_consummate_concept_is_subject_to_mae_carveouts', 'maud_accuracy_of_fundamental_target_rws_bringdown_standard', 'maud_accuracy_of_target_capitalization_rw_(outstanding_shares)_bringdown_standard_answer', 'maud_accuracy_of_target_general_rw_bringdown_timing_answer', 'maud_additional_matching_rights_period_for_modifications_(cor)', 'maud_application_of_buyer_consent_requirement_(negative_interim_covenant)', 'maud_buyer_consent_requirement_(ordinary_course)', 'maud_change_in_law__subject_to_disproportionate_impact_modifier', 'maud_changes_in_gaap_or_other_accounting_principles__subject_to_disproportionate_impact_modifier', 'maud_cor_permitted_in_response_to_intervening_event', 'maud_cor_permitted_with_board_fiduciary_determination_only', 'maud_cor_standard_(intervening_event)', 'maud_cor_standard_(superior_offer)', 'maud_definition_contains_knowledge_requirement_-_answer', 'maud_definition_includes_asset_deals', 'maud_definition_includes_stock_deals', 'maud_fiduciary_exception__board_determination_standard', 'maud_fiduciary_exception_board_determination_trigger_(no_shop)', 'maud_financial_point_of_view_is_the_sole_consideration', 'maud_fls_(mae)_standard', 'maud_general_economic_and_financial_conditions_subject_to_disproportionate_impact_modifier', 'maud_includes_consistent_with_past_practice', 'maud_initial_matching_rights_period_(cor)', 'maud_initial_matching_rights_period_(ftr)', 'maud_intervening_event_-_required_to_occur_after_signing_-_answer', 'maud_knowledge_definition', 'maud_liability_standard_for_no-shop_breach_by_target_non-do_representatives', 'maud_ordinary_course_efforts_standard', 'maud_pandemic_or_other_public_health_event__subject_to_disproportionate_impact_modifier', 'maud_pandemic_or_other_public_health_event_specific_reference_to_pandemic-related_governmental_responses_or_measures', 'maud_relational_language_(mae)_applies_to', 'maud_specific_performance', 'maud_tail_period_length', 'maud_type_of_consideration', 'nys_judicial_ethics', 'opp115_data_retention', 'opp115_data_security', 'opp115_do_not_track', 'opp115_first_party_collection_use', 'opp115_international_and_specific_audiences', 'opp115_policy_change', 'opp115_third_party_sharing_collection', 'opp115_user_access,_edit_and_deletion', 'opp115_user_choice_control', 'oral_argument_question_purpose', 'overruling', 'personal_jurisdiction', 'privacy_policy_entailment', 'privacy_policy_qa', 'proa', 'rule_qa', 'sara_entailment', 'sara_numeric', 'scalr', 'ssla_company_defendants', 'ssla_individual_defendants', 'ssla_plaintiff', 'successor_liability', 'supply_chain_disclosure_best_practice_accountability', 'supply_chain_disclosure_best_practice_audits', 'supply_chain_disclosure_best_practice_certification', 'supply_chain_disclosure_best_practice_training', 'supply_chain_disclosure_best_practice_verification', 'supply_chain_disclosure_disclosed_accountability', 'supply_chain_disclosure_disclosed_audits', 'supply_chain_disclosure_disclosed_certification', 'supply_chain_disclosure_disclosed_training', 'supply_chain_disclosure_disclosed_verification', 'telemarketing_sales_rule', 'textualism_tool_dictionaries', 'textualism_tool_plain', 'ucc_v_common_law', 'unfair_tos']
 
-validation_dataset = val_dataset2.map(
-    preprocess_validation_examples,
-    batched=True,
-    remove_columns=val_dataset2.column_names,
+train_and_evaluate(
+    dataset_name="nguha/legalbench",
+    subsets=subsets,
+    model_name=model_name,
+    output_dir=output_dir,
+    overwrite_output_dir=overwrite_output_dir,
+    per_device_train_batch_size=per_device_train_batch_size,
+    num_train_epochs=num_train_epochs,
+    save_steps=save_steps,
+    fp16=True     
 )
-len(validation_dataset)
-
-tokenizer = AutoTokenizer.from_pretrained(model_checkpoint)
-df_train=df_train[['question','human_ans_indices','review','human_ans_spans']]
-df_test=df_test[['question','human_ans_indices','review','human_ans_spans']]
-
-import torch
-import torch.nn as nn
-import torch.nn.functional as F
-from transformers import AutoModel, BertModel, DistilBertModel
-
-
-checkpoint = "distilbert-base-uncased"
-
-
-class BertRNNModel(nn.Module):
-    def __init__(self, checkpoint, num_labels):
-        super(BertRNNModel, self).__init__()
-        self.bert = BertModel.from_pretrained(checkpoint)
-        self.lstm = nn.LSTM(768, 256, 2,
-                            bidirectional=True, batch_first=True, dropout=0.2)
-        self.dropout = nn.Dropout(0.2)
-        self.fc_rnn = nn.Linear(256 * 2, num_labels)
-
-    def forward(self, **batch):
-        encoder_out = self.bert(input_ids=batch['input_ids'], attention_mask=batch['attention_mask'])
-        out, _ = self.lstm(encoder_out[1])
-        out = self.dropout(out)
-        out = self.fc_rnn(out)  # hidden state
-        return out
-        
-import numpy as np
-df_train['id']=np.linspace(0,len(df_train)-1,len(df_train))
-df_test['id']=np.linspace(0,len(df_test)-1,len(df_test))
-
-df_train['id']=df_train['id'].astype(str)
-df_test['id']=df_test['id'].astype(str)
-
-int(df_train.iloc[0].human_ans_indices.split('(')[1].split(',')[0])
-
-float(df_train.iloc[0].human_ans_indices.split('(')[1].split(',')[1].split(' ')[1].split(')')[0])
-
-df_train['answers']=df_train['human_ans_spans']
-df_test['answers']=df_test['human_ans_spans']
-
-for i in range(0,len(df_train)):
-  answer1={}
-  si=int(df_train.iloc[i].human_ans_indices.split('(')[1].split(',')[0])
-  ei=int(df_train.iloc[i].human_ans_indices.split('(')[1].split(',')[1].split(' ')[1].split(')')[0])
-  answer1['text']=[df_train.iloc[i].review[si:ei]]
-  answer1['answer_start']=[si]
-  df_train.at[i, 'answers']=answer1
-  #print(df_train.iloc[i].answers,df_train.iloc[i].human_ans_spans)
-  
-for i in range(0,len(df_test)):
-  answer1={}
-  si=int(df_test.iloc[i].human_ans_indices.split('(')[1].split(',')[0])
-  ei=int(df_test.iloc[i].human_ans_indices.split('(')[1].split(',')[1].split(' ')[1].split(')')[0])
-  answer1['text']=[df_test.iloc[i].review[si:ei]]
-  answer1['answer_start']=[si]
-  df_test.at[i, 'answers']=answer1
-  #print(df_train.iloc[i].answers,df_train.iloc[i].human_ans_spans)
-  
-df_train.columns=['question', 'human_ans_indices', 'context', 'human_ans_spans', 'id',
-       'answers']
-
-df_test.columns=['question', 'human_ans_indices', 'context', 'human_ans_spans','id',
-       'answers']
-
-val_dataset2 = datasets.Dataset.from_pandas(df_test)
-train_dataset2 = datasets.Dataset.from_pandas(df_train)
-
-train_dataset = train_dataset2.map(
-    preprocess_training_examples,
-    batched=True,
-    remove_columns=train_dataset2.column_names,
-)
-len(train_dataset2), len(train_dataset)
-
-
-if model_bert_lstm:
-    # model bert with lstm
-    model = BertRNNModel('bert-base-uncased', 6)
-    print('using model bert with lstm head')
-else:
-    # model bert classification
-    checkpoint = "distilbert-base-uncased"
-    model = DistilBertForSequenceClassification.from_pretrained(checkpoint, num_labels=6)
-    print('using model bert classification without lstm')
-
-device = torch.device("cuda") if torch.cuda.is_available() else torch.device("cpu")
-model.to(device)
-
-num_training_steps = num_epochs * len(train_dataloader)
-
-optimizer = AdamW(model.parameters(), lr=5e-5)
-lr_scheduler = get_scheduler("linear", optimizer=optimizer,
-                              num_warmup_steps=0, num_training_steps=num_training_steps)
-
-metric = load_metric("glue", "mrpc")
-
-train_loss_lst = []
-test_loss_lst = []
-acc_train_lst = []
-acc_test_lst = []
-
-
-f1_type = 'macro'   # macro
-
-for epoch in range(num_epochs):
-
-    train_loss, steps_train = 0, 0
-    pred_train_lst = []
-    origin_train_lst = []
-
-    model.train()
-    with tqdm(total=len(train_dataloader), desc="Training Epoch {}".format(epoch)) as pbar:
-        for batch in train_dataloader:
-            batch = {k: v.to(device) for k, v in batch.items()}
-            outputs = model(**batch)
-            if model_bert_lstm:
-                loss = F.cross_entropy(outputs, batch['labels'])
-            else:
-                loss = outputs.loss
-                outputs = outputs.logits
-
-            loss.backward()
-
-            optimizer.step()
-            lr_scheduler.step()
-            optimizer.zero_grad()
-            pbar.update(1)
-
-            train_loss += loss
-            steps_train += 1
-
-            predictions = torch.argmax(outputs, dim=-1)
-            metric.add_batch(predictions=predictions, references=batch["labels"])
-            pred_train_lst.extend(predictions.tolist())
-            origin_train_lst.extend(batch['labels'].tolist())
-
-    avg_train_loss = (train_loss / steps_train).item()
-    acc_train = f1_score(pred_train_lst, origin_train_lst, average=f1_type)
-
-
-    model.eval()
-    pred_test_lst = []
-    test_loss, steps_test = 0, 0
-
-    with tqdm(total=len(test_dataloader), desc="Test Epoch {}".format(epoch)) as pbar:
-        for batch in test_dataloader:
-            batch = {k: v.to(device) for k, v in batch.items()}
-            with torch.no_grad():
-                outputs = model(**batch)
-
-                if model_bert_lstm:
-                    loss = F.cross_entropy(outputs, batch['labels'])
-                else:
-                    loss = outputs.loss
-                    outputs = outputs.logits
-
-            pbar.update(1)
-
-            test_loss += loss
-            steps_test += 1
-
-            predictions = torch.argmax(outputs, dim=-1)
-            metric.add_batch(predictions=predictions, references=batch["labels"])
-            pred_test_lst.extend(predictions.tolist())
-
-    acc_test = f1_score(pred_test_lst, test_labels, average=f1_type)
-    avg_test_loss = (test_loss / steps_test).item()
-
-    print('epoch' + str(epoch), 'train loss', avg_train_loss, 'train f1 '+f1_type, acc_train)
-    print('test loss', avg_test_loss, 'test f1 '+f1_type,  acc_test, '\n')
-
-    train_loss_lst.append(avg_train_loss)
-    test_loss_lst.append(avg_test_loss)
-    acc_train_lst.append(acc_train)
-    acc_test_lst.append(acc_test)
-
-
-print('model evaluation')
-pred_val_lst = []
-for batch in val_dataloader:
-    batch = {k: v.to(device) for k, v in batch.items()}
-    with torch.no_grad():
-        outputs = model(**batch)
-
-        if model_bert_lstm:
-            loss = F.cross_entropy(outputs, batch['labels'])
-        else:
-            loss = outputs.loss
-            outputs = outputs.logits
-
-    predictions = torch.argmax(outputs, dim=-1)
-    metric.add_batch(predictions=predictions, references=batch["labels"])
-    pred_val_lst.extend(predictions.tolist())
-
-acc_val = f1_score(pred_val_lst, val_labels, average='micro')
-acc_val2 = f1_score(pred_val_lst, val_labels, average='macro')
-print('val accuracy:', 'f1 micro', acc_val, '   f1 macro', acc_val2)
-
-
-print('plot the result')
-epochs = [i for i in range(num_epochs)]
-fig , ax = plt.subplots(1,2)
-
-fig.set_size_inches(20,6)
-
-ax[0].plot(epochs , train_loss_lst , label = 'Training Loss')
-ax[0].plot(epochs , test_loss_lst , label = 'Testing Loss')
-ax[0].set_title('Training & Testing Loss')
-ax[0].legend()
-ax[0].set_xlabel("Epochs")
-
-ax[1].plot(epochs , acc_train_lst , label = 'Training Accuracy')
-ax[1].plot(epochs , acc_test_lst , label = 'Testing Accuracy')
-ax[1].set_title('Training & Testing Accuracy')
-ax[1].legend()
-ax[1].set_xlabel("Epochs")
-plt.show()
-
-
-if not model_bert_lstm:
-    print('Do interpret using shap')
-    pred = transformers.pipeline("text-classification", model=model, tokenizer=tokenizer, device=0, return_all_scores=True)
-    explainer = shap.Explainer(pred)
-
-    shap_values = explainer(train_sentences[:100])
-    shap.plots.bar(shap_values[:, :, 0].mean(0))
-    shap.plots.bar(shap_values[:, :, 1].mean(0))
-    shap.plots.bar(shap_values[:, :, 2].mean(0))
-    shap.plots.bar(shap_values[:, :, 3].mean(0))
-    shap.plots.bar(shap_values[:, :, 4].mean(0))
-    shap.plots.bar(shap_values[:, :, 5].mean(0))
-
-
-    print('do interpret using lime')
-    class_names = [0, 1, 2, 3, 4, 5]
-
-    def predictor(texts):
-        model.to('cpu')
-        outputs = model(**tokenizer(texts, return_tensors="pt", padding=True))
-        tensor_logits = outputs[0]
-        probas = F.softmax(tensor_logits).detach().numpy()
-        return probas
-
-    explainer = LimeTextExplainer(class_names=class_names)
-
-    images_dir = os.getcwd() + os.path.sep + 'Images' + os.path.sep
-
-    if not os.path.exists(images_dir):
-        os.makedirs(images_dir)
-
-    exp1 = explainer.explain_instance(train_sentences[1], predictor, num_features=6, num_samples=2000)
-    exp1.save_to_file(images_dir + 'lime1.html')
-
-    exp2 = explainer.explain_instance(train_sentences[3], predictor, num_features=6, num_samples=2000)
-    exp2.save_to_file(images_dir + 'lime2.html')
-
-import torch
-from transformers import AutoModelForQuestionAnswering
-
-import evaluate
-
-metric = evaluate.load("squad")
-
-from tqdm.auto import tqdm
-
-
-def compute_metrics(start_logits, end_logits, features, examples):
-    example_to_features = collections.defaultdict(list)
-    for idx, feature in enumerate(features):
-        example_to_features[feature["example_id"]].append(idx)
-
-    predicted_answers = []
-    for example in tqdm(examples):
-        example_id = example["id"]
-        context = example["context"]
-        answers = []
-
-        # Loop through all features associated with that example
-        for feature_index in example_to_features[example_id]:
-            start_logit = start_logits[feature_index]
-            end_logit = end_logits[feature_index]
-            offsets = features[feature_index]["offset_mapping"]
-
-            start_indexes = np.argsort(start_logit)[-1 : -n_best - 1 : -1].tolist()
-            end_indexes = np.argsort(end_logit)[-1 : -n_best - 1 : -1].tolist()
-            for start_index in start_indexes:
-                for end_index in end_indexes:
-                    # Skip answers that are not fully in the context
-                    if offsets[start_index] is None or offsets[end_index] is None:
-                        continue
-                    # Skip answers with a length that is either < 0 or > max_answer_length
-                    if (
-                        end_index < start_index
-                        or end_index - start_index + 1 > max_answer_length
-                    ):
-                        continue
-
-                    answer = {
-                        "text": context[offsets[start_index][0] : offsets[end_index][1]],
-                        "logit_score": start_logit[start_index] + end_logit[end_index],
-                    }
-                    answers.append(answer)
-
-        # Select the answer with the best score
-        if len(answers) > 0:
-            best_answer = max(answers, key=lambda x: x["logit_score"])
-            predicted_answers.append(
-                {"id": example_id, "prediction_text": best_answer["text"]}
-            )
-        else:
-            predicted_answers.append({"id": example_id, "prediction_text": ""})
-
-    theoretical_answers = [{"id": ex["id"], "answers": ex["answers"]} for ex in examples]
-    return metric.compute(predictions=predicted_answers, references=theoretical_answers)
-
-
-model = AutoModelForQuestionAnswering.from_pretrained(model_checkpoint)
-
-
-from transformers import TrainingArguments
-
-args = TrainingArguments(
-    "roberta-finetuned-subjqa-movies_2",
-    evaluation_strategy="epoch",
-    logging_strategy="epoch",
-    save_strategy="epoch",
-    learning_rate=2e-5,
-    num_train_epochs=5,
-    weight_decay=0.01,
-    #fp16=True,
-    #push_to_hub=True,
-)
-
-from transformers import Trainer
-
-trainer = Trainer(
-    model=model,
-    args=args,
-    train_dataset=train_dataset,
-    eval_dataset=validation_dataset,
-    tokenizer=tokenizer,
-)
-
-
-import numpy as np
-n_best=20
-max_answer_length = 30
-
-predictions, _, _ = trainer.predict(validation_dataset)
-start_logits, end_logits = predictions
-compute_metrics(start_logits, end_logits, validation_dataset, val_dataset2)
-
-trainer.push_to_hub(commit_message="Training complete")
-
-
-
-
-
-context = df_train1.iloc[13].review
-question = df_train1.iloc[13].question
-question_answerer(question=question, context=context)
-
-
-# Replace this with your own checkpoint
-model_checkpoint_o = "deepset/roberta-base-squad2"
-question_answerer_old = pipeline("question-answering", model=model_checkpoint_o)
-
-
-context = df_train1.iloc[13].review
-question = df_train1.iloc[13].question
-question_answerer_old(question=question, context=context)
-
 
