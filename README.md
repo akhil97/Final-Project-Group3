@@ -42,7 +42,7 @@ The models are fine-tuned on diverse legal datasets:
    python3 train.py
    ```
 
-#### Running Streamlit app:**
+#### **Running Streamlit app:**
 ```bash
    streamlit run streamlit.py --server.port 8888 --server.fileWatcherType none
 ```
