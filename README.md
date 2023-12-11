@@ -36,6 +36,16 @@ The models are fine-tuned on diverse legal datasets:
    ```bash
    python Inference_Text_Generation.py --model-path <trained GPT2 model path>
    ```
+#### **Pegasus Text Summarization Process:**
+   ```bash
+   cd Code/Summarization/
+   python3 train.py
+   ```
+
+#### **Running Streamlit app:**
+```bash
+   streamlit run streamlit.py --server.port 8888 --server.fileWatcherType none
+```
 
 #### **Experimentation and Customization:**
 
