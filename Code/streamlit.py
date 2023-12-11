@@ -10,10 +10,11 @@ import random
 import torch
 import os
 from huggingface_hub import hf_hub_download
-from transformers import AutoTokenizer, AutoModelForSeq2SeqLM
+from transformers import AutoTokenizer, AutoModelForSeq2SeqLM ,AutoModelForSequenceClassification
 import joblib
 import chat
-
+import spacy
+import re
 REPO_ID = "pile-of-law/legalbert-large-1.7M-2"
 
 files_to_download = [
@@ -51,6 +52,72 @@ def extract_text_from_document(file):
             return None
     else:
         return None
+#________________________________________________*Classification code begins*__________________________________________
+def remove_urls(text):
+    # Define a regular expression pattern for matching URLs
+    url_pattern = re.compile(r'https?://\S+|www\.\S+')
+    words_to_remove = ['Indian Kanoon']
+    combined_pattern = re.compile('|'.join([url_pattern.pattern] + [re.escape(word) for word in words_to_remove]),
+                                  flags=re.IGNORECASE)
+    # Use the sub method to replace all matches with an empty string
+    processed_text = re.sub(combined_pattern, '', text)
+    return processed_text
+
+
+def predict_legal_judgment(text, model_name):
+    seed_value = 42
+    torch.manual_seed(seed_value)
+    torch.cuda.manual_seed(seed_value)
+
+    # Load tokenizer and model based on the provided model name
+    if model_name == "Indian-Legal-Bert":
+        model = "law-ai/CustomInLawBERT"
+        tokenizer = AutoTokenizer.from_pretrained(model)
+        model = AutoModelForSequenceClassification.from_pretrained(model)
+    elif model_name == "Indian-Custom-Bert":
+        model = "brundamariswamy/Indian-Custom-Bert"
+        tokenizer = AutoTokenizer.from_pretrained(model)
+        model = AutoModelForSequenceClassification.from_pretrained(model)
+    else:
+        raise ValueError("Invalid model name")
+
+    inputs = tokenizer(text[-512:], return_tensors="pt")
+
+    with torch.no_grad():
+        torch.manual_seed(seed_value)
+        torch.cuda.manual_seed(seed_value)
+        outputs = model(**inputs)
+
+    logits = outputs.logits
+    # Apply softmax to obtain class probabilities
+    probabilities = torch.nn.functional.softmax(logits, dim=1)
+    # Get the predicted class label
+    predicted_class = torch.argmax(probabilities, dim=1).item()
+
+    return probabilities, predicted_class
+
+# Load the spaCy model
+nlp = spacy.load("en_legal_ner_trf")
+# Function to process text from a file
+def process_text_from_file(text):
+    # Read text from the file
+    doc = nlp(text)
+    # Create a dictionary to store entities by their names
+    entity_dict = {}
+    # Extract and store entities by their names
+    for ent in doc.ents:
+        if ent.label_ not in entity_dict:
+            entity_dict[ent.label_] = set()
+        # Lowercase the entity to make it case-insensitive
+        entity = ent.text.lower()
+        entity_dict[ent.label_].add(entity)
+
+        # Remove duplicate entities within each category
+    for label, entities in entity_dict.items():
+        entity_dict[label] = list(entities)
+
+    return entity_dict
+#___________________________________________________________*Classification code ends*________________________________________________________
 
 
 def generate_response_with_selected_model(model, tokenizer, input_tokenized):
@@ -85,7 +152,7 @@ def main():
         st.write("3. Wait for the app to process the document.")
         st.write("4. View the summarized key points and clauses.")
 
-        model_choice = st.sidebar.selectbox("Choose a Model", ["Pegasus Legal", "Pegasus Indian Legal"])
+        model_choice = st.sidebar.selectbox("Choose a Model", ["Pegasus Legal", "Pegasus Indian Legal","Indian-Legal-Bert", "Indian-Custom-Bert"])
 
         uploaded_file = st.file_uploader("Upload a legal document", type=["pdf", "docx", "txt"])
         if uploaded_file is not None:
@@ -115,41 +182,43 @@ def main():
                 st.write("Unable to process the document. Please try again with a different file format.")
 
     with tab2:
-        st.title("Legal Document Classifier and Predictor")
+        st.title("Legal Case Judgement  Prediction and Extracting  Legal Named Entities")
         st.write("## Description")
-        st.write(
-            "This advanced tool is designed to classify legal documents into specific categories and predict outcomes based on their content. It's useful for legal professionals who need quick insights into a document's nature and potential legal outcomes.")
+        st.write("This advanced tool is designed to Predict Legal Judgements and Extract Legal Named Entities based on the provided content. It's useful for legal professionals who need quick insights to legal outcomes and the entities present in the case document.")
         st.write("## How It Works")
-        st.write(
-            "1. **Upload a Legal Document:** Begin by uploading a document. Accepted formats include PDF, DOCX, and TXT.")
+        st.write("1. **Upload a Legal Document:** Begin by uploading a document. Accepted formats include PDF, DOCX, and TXT.")
         st.write("2. **Choose Your Model:** Select from a range of AI models optimized for legal text analysis.")
-        st.write(
-            "3. **Document Analysis:** The tool will classify the document into categories such as 'Contract', 'Court Judgment', 'Patent', and more.")
-        st.write(
-            "4. **Outcome Prediction:** Based on the analysis, it will also predict potential outcomes or implications.")
+        st.write("3. **Document Analysis:** The tool will Predict whether the appeals/claims filed by the appellant against the respondent is Accepted /Rejected and extract its Legal Named Entities from the document uploaded")
+        st.write( "4. **Outcome Prediction:** Based on the analysis, it will also predict potential outcomes or implications.")
 
         uploaded_file = st.file_uploader("Upload Document", type=["pdf", "docx", "txt"])
         if uploaded_file is not None:
             st.write("Analyzing Document...")
             document_content = extract_text_from_document(uploaded_file)
+            cleaned_text = remove_urls(document_content)
+            words = cleaned_text.split()[-300:]
+            st.write("Display last few lines from uploaded Legal case document:")
+            st.write(' '.join(words))
 
-            if document_content:
-                if model_choice == "BERT":
-                    # classification_result, prediction = bert_analyze(document_content)
-                    classification_result, prediction = "Contract", "Breach of Contract"
-                elif model_choice == "RoBERTa":
-                    # classification_result, prediction = roberta_analyze(document_content)
-                    classification_result, prediction = "Contract", "Breach of Contract"
-                elif model_choice == "Legal-BERT":
-                    # classification_result, prediction = legal_bert_analyze(document_content)
-                    classification_result, prediction = "Contract", "Breach of Contract"
+            if cleaned_text:
+                if model_choice in ["Indian-Legal-Bert", "Indian-Custom-Bert"]:
+                    # Define the model name based on the user's choice
+                    model_name = "Indian-Legal-Bert" if model_choice == "Indian-Legal-Bert" else "Indian-Custom-Bert"
+                    # Get predictions and entities
+                    probabilities, predicted_class = predict_legal_judgment(cleaned_text, model_name=model_name)
+                    prediction_label = "Accepted" if predicted_class == 1 else "Rejected"
+                    # Display results
+                    st.write("## Analysis Results")
+                    st.write(f"<span style='font-weight: bold; color: #001f3f;font-size: 1.8em;'>Legal Case Judgement:</span> {prediction_label}",unsafe_allow_html=True)
+                    st.write("Prediction Confidence Bar Chart:")
+                    st.bar_chart(probabilities[0].numpy(), use_container_width=True)
+
+                    st.write("### Extracting Legal Named Entities:")
+                    entities = process_text_from_file(cleaned_text)
+                    for label, entities_list in entities.items():
+                        st.write(f"<span style='font-weight: bold; color: #001f3f;font-size: 1.0em;'>{label}:</span> {', '.join(entities_list)}",unsafe_allow_html=True)
                 else:
-                    st.write(
-                        "Please choose an appropriate model from one of the following options - BERT, RoBERTa, or Legal-BERT.")
-
-                st.write("## Analysis Results")
-                st.write("**Document Classification:**", classification_result)
-                st.write("**Predicted Outcome:**", prediction)
+                    st.write("Please choose an appropriate model from one of the following options - BERT, RoBERTa, or Legal-BERT.")
             else:
                 st.error("Unable to process the document. Please try a different format.")
 
