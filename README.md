@@ -37,10 +37,11 @@ The models are fine-tuned on diverse legal datasets:
    python Inference_Text_Generation.py --model-path <trained GPT2 model path>
    ```
 #### **Pegasus Text Summarization Process:**
-    ```bash
-      cd Code/Summarization/
-      python train.py
-    ```
+   <br>
+   > cd Code/Summarization/
+   > 
+   > python3 train.py
+   <br>
 #### **Experimentation and Customization:**
 
 The scripts support experimentation with various hyperparameters, such as learning rate, batch size, and number of epochs. For detailed instructions and more options, refer to the code documentation.
