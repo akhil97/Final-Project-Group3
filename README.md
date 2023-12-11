@@ -17,6 +17,8 @@ The models are fine-tuned on diverse legal datasets:
 
 #### **GPT-2 Text Generation Process:**
 
+- Make sure to install necessary packages through ```pip install -r requirements.txt```
+
 1. **Dataset Acquisition**:
    Download the legal contracts dataset with:
    ```bash
