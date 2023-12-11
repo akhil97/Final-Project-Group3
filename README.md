@@ -42,7 +42,8 @@ The models are fine-tuned on diverse legal datasets:
    python3 train.py
    ```
 #### ** Text Classification:**
-   ```bash
+    ```bash
+   cd Code/Setiment/
    python3 Bert_Tuned.py
    ```
 #### **Running Streamlit app:**
