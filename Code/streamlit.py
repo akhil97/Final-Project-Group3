@@ -61,13 +61,11 @@ def generate_response_with_selected_model(model, tokenizer, input_tokenized):
                                  min_length=150,
                                  max_length=250,
                                  early_stopping=True)
-    summary = [tokenizer.decode(g, skip_special_tokens=True, clean_up_tokenization_spaces=False) for g in summary_ids][
-        0]
+    summary = [tokenizer.decode(g, skip_special_tokens=True, clean_up_tokenization_spaces=False) for g in summary_ids][0]
     return summary
 
 
 summary = "This is a summary of the document."
-
 
 def main():
     inject_custom_css()
@@ -96,11 +94,9 @@ def main():
 
             if document_text:
                 if model_choice == "Pegasus Legal":
-                    # summary = bert_summarize(document_text)
                     tokenizer = AutoTokenizer.from_pretrained("nsi319/legal-pegasus")
                     model = AutoModelForSeq2SeqLM.from_pretrained("nsi319/legal-pegasus")
-                    input_tokenized = tokenizer.encode(document_text, return_tensors='pt', max_length=1024,
-                                                       truncation=True)
+                    input_tokenized = tokenizer.encode(document_text, return_tensors='pt', max_length=1024, truncation=True)
                     summary = generate_response_with_selected_model(model, tokenizer, input_tokenized)
                 elif model_choice == "Pegasus Indian Legal":
                     tokenizer = AutoTokenizer.from_pretrained("akhilm97/pegasus_indian_legal")
