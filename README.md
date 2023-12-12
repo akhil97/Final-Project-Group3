@@ -41,7 +41,11 @@ The models are fine-tuned on diverse legal datasets:
    cd Code/Summarization/
    python3 train.py
    ```
-
+#### **Text Classification:**
+   ```bash
+   cd Code/Sentiment/
+   python3 Bert_Tuned.py
+   ```
 #### **Running Streamlit app:**
 ```bash
    streamlit run streamlit.py --server.port 8888 --server.fileWatcherType none
