@@ -1,10 +1,10 @@
 import torch
-from transformers import GPT2Tokenizer, GPT2LMHeadModel
+import os
+from transformers import GPT2Tokenizer, GPT2LMHeadModel, GPT2Config
 import os
 import argparse
 from huggingface_hub import hf_hub_download
 import shutil
-
 
 def generate_legal_document(prompt, model, tokenizer, max_length=512, max_new_tokens=50):
     """
@@ -51,20 +51,18 @@ def generate_legal_document(prompt, model, tokenizer, max_length=512, max_new_to
 
 def download_model_from_hub(repo_id, model_directory):
     """
-    Download the model files from Hugging Face Hub and save them in the specified directory.
-
-    Parameters:
-    repo_id (str): Repository ID on Hugging Face Hub.
-    model_directory (str): Directory where the model should be saved.
+    Download the model and tokenizer files from Hugging Face Hub and save them in the specified directory.
     """
     if not os.path.exists(model_directory):
         os.makedirs(model_directory)
 
-    file_names = ['config.json', 'generation_config.json', 'model.safetensors']
+    # List of filenames to download
+    file_names = ['config.json', 'fine_tuned_gpt2.pt', 'tokenizer_gpt2.pt']
 
     for file_name in file_names:
-        file_path = hf_hub_download(repo_id=repo_id, filename=f"{model_directory}/{file_name}")
+        file_path = hf_hub_download(repo_id=repo_id, filename=file_name)
         shutil.copy(file_path, os.path.join(model_directory, file_name))
+
 
 
 def main():
@@ -74,17 +72,18 @@ def main():
     
     args = parser.parse_args()
 
+    model_directory = args.model_path if args.model_path else "model_downloaded"
+    repo_id = "chiraglakhanpal/Legal"
+
     if args.model_path is None:
-        model_directory = "fine_tuned_gpt2_E25_Large"
-        repo_id = "chiraglakhanpal/Legal"
         print("Downloading the model from Hugging Face Hub...")
         download_model_from_hub(repo_id, model_directory)
-        model_path = model_directory
-    else:
-        model_path = args.model_path
 
-    tokenizer = GPT2Tokenizer.from_pretrained('gpt2')
-    model = GPT2LMHeadModel.from_pretrained(model_path, local_files_only=True)
+    tokenizer = torch.load(os.path.join(model_directory, "tokenizer_gpt2.pt"))
+
+    config = GPT2Config.from_json_file(os.path.join(model_directory, 'config.json'))
+    model = GPT2LMHeadModel(config)
+    model.load_state_dict(torch.load(os.path.join(model_directory, "fine_tuned_gpt2.pt")))
 
     model.eval()
 
@@ -95,6 +94,6 @@ def main():
 
     generated_document = generate_legal_document(prompt, model, tokenizer, max_length=512, max_new_tokens=512)
     print(generated_document)
-    
+
 if __name__ == "__main__":
     main()
