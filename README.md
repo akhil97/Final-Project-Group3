@@ -50,6 +50,7 @@ The models are fine-tuned on diverse legal datasets:
 ```bash
    streamlit run streamlit.py --server.port 8888 --server.fileWatcherType none
 ```
+After running the app one can use the test files (.txt format) in the Test files folder to upload files in the app and check results. 
 
 #### **Experimentation and Customization:**
 
