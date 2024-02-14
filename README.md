@@ -2,6 +2,8 @@
 
 Explore our specialized repository designed for training state-of-the-art AI models on legal text data. We focus on key tasks such as text classification, text generation, and text summarization using BERT, GPT-2, and PEGASUS.
 
+![](/Demo/Text_Summarization.gif)
+
 #### **Our Cutting-Edge Models Include:**
 
 - **BERT**: Specialized in sequence classification and sentiment analysis.
