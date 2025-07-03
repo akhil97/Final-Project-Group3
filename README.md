@@ -1,9 +1,30 @@
 ### **AI Models for Legal Text Processing**
 
-Explore our specialized repository designed for training state-of-the-art AI models on legal text data. We focus on key tasks such as text classification, text generation, and text summarization using BERT, GPT-2, and PEGASUS.
+## Table of contents
+- Scope of project
+- Demo GIF
+- Model information
+- GPT-2 Text Generation Process
+- Pegasus Text Summarization Process
+- Text Classification
+- Running Streamlit app
+- Experimentation and Customization
+  
+## Scope of project
+Legal documents are very tough to interpret as they are very long and have a lot of important information. Humans find it quite challenging to quickly go through legal <br>
+documents and understand key aspects without missing vital information. Most legaldocuments have a lot of information that is more relevant such as dates, deadlines, names <br>
+of people, etc. Attorneys, judges, lawyers, and others in the justice system are constantly surrounded by large amounts of the legal text, which can be difficult to manage across <br>
+many cases. They face the problem of organizing briefs, judgments, and acts. Due to the huge amount of legal information available on the internet, as well as other <br>
+sources, the research community needs to do more extensive research on the area of legal text processing, which can help us make sense of the vast amount of available data. This <br>
+information growth has compelled the requirement to develop systems that can help legal professionals, as well as ordinary citizens, get relevant legal information with very little <br>
+effort.We have worked on different tasks such as Text summarization (both extractive and abstractive), Sentiment analysis to Predict the Judgment, and Text generation of legal <br>
+documents. <br>
 
+Explore our specialized repository designed for training state-of-the-art AI models on legal text data. We focus on key tasks such as text classification, text generation, and text summarization using BERT, GPT-2, and PEGASUS.
+## Demo GIF
 ![](/Demo/Text_Summarization.gif)
 
+## Model information
 #### **Our Cutting-Edge Models Include:**
 
 - **BERT**: Specialized in sequence classification and sentiment analysis.
